@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.wav
+.DS_Store
+solfege_samples/
+data/
+*.egg-info/
+build/
