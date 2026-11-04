@@ -15,9 +15,7 @@ from .synth import render
 def missed(con, sid):
     sql = """SELECT i.idx, i.truth, i.meta FROM items i
              LEFT JOIN answers a ON a.session_id = i.session_id AND a.idx = i.idx
-             JOIN sessions s ON s.id = i.session_id
              WHERE i.session_id = ? AND coalesce(a.correct, 0) = 0
-               AND i.window_end_ms <= coalesce(s.stopped_at_ms, 1 << 62)
              ORDER BY i.idx"""
     import json
     return [json.loads(meta) for _, _, meta in con.execute(sql, (sid,))]

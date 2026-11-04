@@ -106,6 +106,12 @@ def replace_answers(con, sid, rows):
 
 
 def finish_session(con, sid, outcome, stopped_at_ms):
+    """Items are the questions asked: a stopped session keeps only those whose
+    answer window closed before the stop (the full score is in the .key.jsonl)."""
+    if stopped_at_ms is not None:
+        con.execute("DELETE FROM answers WHERE session_id=? AND idx IN "
+                    "(SELECT idx FROM items WHERE session_id=? AND window_end_ms > ?)", (sid, sid, stopped_at_ms))
+        con.execute("DELETE FROM items WHERE session_id=? AND window_end_ms > ?", (sid, stopped_at_ms))
     con.execute("UPDATE sessions SET outcome=?, stopped_at_ms=? WHERE id=?", (outcome, stopped_at_ms, sid))
     con.commit()
 

@@ -40,12 +40,13 @@ def main(argv=None):
     r.add_argument("--midi", metavar="FILE")
     r.add_argument("--render", metavar="FILE", help="write the review WAV to FILE instead of playing it")
 
-    s = sub.add_parser("stats", help="the long view: by week, per mode, per degree, confusions")
+    s = sub.add_parser("stats", help="minutes by week, a right%% histogram per exercise, degree confusions")
     s.add_argument("--mode", default="all", help=" | ".join(MODES) + " | all (default: every mode in turn)")
     s.add_argument("--scale")
     s.add_argument("--key")
     s.add_argument("--tag")
-    s.add_argument("--last", type=int, default=stats.DEFAULT_LAST, help="questions the per-degree tables cover")
+    s.add_argument("--last", type=int, default=stats.DEFAULT_LAST, help="questions the confusion matrix covers")
+    s.add_argument("--full", action="store_true", help="minutes by week and every exercise, not just the last one played")
 
     sub.add_parser("rescore", help="rebuild every session's answers from its key presses")
     sub.add_parser("tags", help="show the sticky tags")
@@ -61,7 +62,7 @@ def main(argv=None):
     if a.cmd == "review":
         return review.run(a.session, a.render, a.midi)
     if a.cmd == "stats":
-        return stats.report(store.connect(), a.mode, a.scale, a.key, a.tag, a.last)
+        return stats.report(store.connect(), a.mode, a.scale, a.key, a.tag, a.last, a.full)
     if a.cmd == "rescore":
         return cmd_rescore()
     if a.cmd == "tags":
