@@ -13,4 +13,4 @@ dependencies = []
 cordelia = "cordelia.cli:main"
 
 [tool.setuptools]
-packages = ["cordelia", "cordelia.modes"]
+packages = ["cordelia", "cordelia.modes", "cordelia.synth"]

@@ -132,7 +132,7 @@ class Builder:
 
     def block(self, t, midis, beats, level=CHORD_LEVEL):
         for m in midis:
-            self.score.notes.append(Note(t, beats * self.beat + RING, m, level))
+            self.score.notes.append(Note(t, beats * self.beat + RING, m, level, voice="chord"))
         return t + beats * self.beat
 
     def clicks(self, t, beats=PAUSE_BEATS):
@@ -151,7 +151,7 @@ class Builder:
         end = t + self.arpeggio_beats(len(midis)) * self.beat
         for i, m in enumerate(midis):
             start = t + i * ARPEGGIO_BEATS * self.beat
-            self.score.notes.append(Note(start, end - start + RING, m, ARPEGGIO_LEVEL))
+            self.score.notes.append(Note(start, end - start + RING, m, ARPEGGIO_LEVEL, voice="chord"))
         return end
 
     def phrase(self, t, root, quality):

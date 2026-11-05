@@ -171,7 +171,10 @@ and `status` (the two lines the terminal shows), `describe`, and
 `build_review`; `cordelia/modes/melody.py` is the second one, with its
 stats section in `cordelia/stats.py`, and `cordelia/modes/chords.py` the
 third, the first without a drone. Everything else — rendering,
-collecting, scoring, storage — is shared. A score is instrument-agnostic: `--midi` writes it as a
+collecting, scoring, storage — is shared. The synth is a package with one
+file per voice (`tone`, `chord`, `click`, `drone`) and the mixer in
+`synth/mix.py`; a `Note` names its voice, and a new timbre is a new file
+plus a line in `VOICES`. A score is instrument-agnostic: `--midi` writes it as a
 Standard MIDI File (notes per instrument, the drone as one long note, the
 spoken labels as lyric events) for any soundfont; a voice bank is just a
 directory of `<label>.wav` under `data/voices/<name>/`, so a sung or
