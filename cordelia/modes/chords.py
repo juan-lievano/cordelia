@@ -27,18 +27,19 @@ from .degrees import NOTE_NAMES
 
 NAME = "chords"
 
-# label: (semitones above the root, the word the voice says, the key that answers it)
+# label: (semitones above the root, the word the voice says, the key that answers it,
+#         the spelling against the major scale)
 QUALITIES = {
-    "maj": ((0, 4, 7), "major", "M"),
-    "min": ((0, 3, 7), "minor", "m"),
-    "sus4": ((0, 5, 7), "sus four", "s"),
-    "aug": ((0, 4, 8), "augmented", "a"),
-    "5": ((0, 7), "five", "5"),
-    "dom7": ((0, 4, 7, 10), "dominant seven", "d"),
-    "maj7": ((0, 4, 7, 11), "major seven", "j"),
-    "min7": ((0, 3, 7, 10), "minor seven", "n"),
-    "dim7": ((0, 3, 6, 9), "diminished seven", "o"),
-    "m7b5": ((0, 3, 6, 10), "half diminished", "h"),
+    "maj": ((0, 4, 7), "major", "M", "1 3 5"),
+    "min": ((0, 3, 7), "minor", "m", "1 ♭3 5"),
+    "sus4": ((0, 5, 7), "sus four", "s", "1 4 5"),
+    "aug": ((0, 4, 8), "augmented", "a", "1 3 ♯5"),
+    "5": ((0, 7), "five", "5", "1 5"),
+    "dom7": ((0, 4, 7, 10), "dominant seven", "d", "1 3 5 ♭7"),
+    "maj7": ((0, 4, 7, 11), "major seven", "j", "1 3 5 7"),
+    "min7": ((0, 3, 7, 10), "minor seven", "n", "1 ♭3 5 ♭7"),
+    "dim7": ((0, 3, 6, 9), "diminished seven", "o", "1 ♭3 ♭5 ♭♭7"),
+    "m7b5": ((0, 3, 6, 10), "half diminished", "h", "1 ♭3 ♭5 ♭7"),
 }
 TRIADS = ("maj", "min", "sus4", "aug", "5")
 SEVENTHS = ("dom7", "maj7", "min7", "dim7", "m7b5")
@@ -68,7 +69,7 @@ ARPEGGIO_HOLD_BEATS = 1        # the whole chord held after the last note enters
                                # the arpeggio is rounded up to whole beats so the clicks stay on the beat
 REST_BEATS = 1
 INTRO_BEATS = 2                # silence before the first question
-OUTRO_SECONDS = 2.0
+OUTRO_SECONDS = 0.0            # no drone to fade, so nothing after the last rest
 RING = 0.25
 CHORD_LEVEL = 0.55             # per note in the block: four of them sum to about a melody note
 ARPEGGIO_LEVEL = 0.7
@@ -97,16 +98,22 @@ def bank(config, data_dir):
 
 def configure(a, last_config, rng):
     """A session config from the parsed flags, or a SystemExit saying why not."""
-    if a.level not in LEVELS:
-        raise SystemExit(f"level {a.level}: choose from {', '.join(map(str, LEVELS))}")
+    level = a.level if a.level is not None else (last_config or {}).get("level", DEFAULTS["level"])
+    if level not in LEVELS:
+        raise SystemExit(f"level {level}: choose from {', '.join(map(str, LEVELS))}")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, bpm=a.bpm, level=a.level, voice=a.voice, keys=1)
+    return dict(minutes=a.minutes, bpm=a.bpm, level=level, voice=a.voice, keys=1)
 
 
-def hint(config):
-    legend = "  ".join(f"{QUALITIES[q][2]} {QUALITIES[q][1]}" for q in LEVELS[config["level"]]["qualities"])
-    return f"{legend}.  Esc stops."
+def hint(config, width):
+    """A cheat sheet: key, chord symbol, spelling against the major scale,
+    in as many equal columns as fit in `width`."""
+    entries = [f"{QUALITIES[q][2]}  {q:<4} {QUALITIES[q][3]}" for q in LEVELS[config["level"]]["qualities"]]
+    cell = max(map(len, entries)) + 4
+    per_line = max(1, (width + 4) // cell)
+    rows = [entries[i:i + per_line] for i in range(0, len(entries), per_line)]
+    return "\n".join("".join(e.ljust(cell) for e in row).rstrip() for row in rows) + "\nEsc stops."
 
 
 def status(current, n, typed, config):

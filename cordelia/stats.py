@@ -9,6 +9,8 @@ import shutil
 import sys
 from datetime import datetime, timedelta
 
+from .modes.degrees import degrees_of, parse_degrees
+
 BARS = 40             # most bars; past that many questions, that many groups
 BAR = 2               # columns wide
 FILL = "▓"            # dark shade: a full block is too bright in a light font
@@ -16,7 +18,7 @@ ROWS = 20             # rows of the histogram, 100% / ROWS each; labelled every 
 PAD = 2               # columns between a box's edge and its contents
 
 
-def load(con, mode=None, scale=None, key=None, tag=None):
+def load(con, mode=None, degrees=None, key=None, tag=None):
     """One row per question asked in a finished session; mode None is every mode."""
     sql = """SELECT s.id, s.started_at_ms, s.mode, s.config, s.tags, s.stopped_at_ms,
                     i.truth, i.meta, a.answer, a.correct, a.latency_ms
@@ -27,7 +29,7 @@ def load(con, mode=None, scale=None, key=None, tag=None):
     rows = []
     for sid, started, smode, config, tags, stopped, truth, meta, answer, correct, latency in con.execute(sql, (mode, mode)):
         cfg, tg = json.loads(config), json.loads(tags)
-        if scale and cfg.get("scale") != scale:
+        if degrees and (smode != "degrees" or degrees_of(cfg) != degrees):
             continue
         if key and cfg.get("key", "").lower() != key.lower():
             continue
@@ -40,11 +42,12 @@ def load(con, mode=None, scale=None, key=None, tag=None):
 
 
 def exercise(mode, cfg):
-    """What is being drilled: the mode, plus the scale when it isn't major and the level when there is one."""
+    """What is being drilled: the mode, plus the list of degrees it asked (degrees)
+    or the level (melody, chords)."""
     parts = [mode]
-    if cfg.get("scale", "major") != "major":
-        parts.append(cfg["scale"])
-    if cfg.get("level") is not None:
+    if mode == "degrees":
+        parts += degrees_of(cfg)
+    elif cfg.get("level") is not None:
         parts.append(str(cfg["level"]))
     return " ".join(parts)
 
@@ -63,11 +66,12 @@ def monday(ms):
     return d - timedelta(days=d.weekday())
 
 
-def report(con, mode="all", scale=None, key=None, tag=None, full=False):
+def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
     """The exercise of the last session played; with full, the practice table and every exercise."""
-    rows = load(con, None if mode == "all" else mode, scale, key, tag)
+    degrees = parse_degrees(degrees) if degrees else None
+    rows = load(con, None if mode == "all" else mode, degrees, key, tag)
     if not rows:
-        print("no sessions recorded yet" + (" with those filters" if (scale or key or tag) else ""))
+        print("no sessions recorded yet" + (" with those filters" if (degrees or key or tag) else ""))
         return
     exercises = sorted({r["exercise"] for r in rows}) if full else [rows[-1]["exercise"]]
     blocks = [("minutes, by week", practice(rows, exercises))] if full else []

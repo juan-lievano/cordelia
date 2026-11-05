@@ -3,21 +3,30 @@ presses, so it can be rerun over every old session when the rule changes.
 
 The presses that count are the last `keys` mapped ones inside the answer
 window, from the question's onset until the answer starts sounding;
-backspace takes the one before it back. One key is a degree, four a
-melody, joined by spaces either way. Presses between the window's end and
+backspace takes the one before it back. One key is a degree (the same key
+twice, its flat), four a melody, joined by spaces either way. Presses between the window's end and
 the next question are recorded as late and never count.
 """
 
 
 def typed(presses, keymap):
-    """The labels a run of key names spells, backspaces applied."""
-    out = []
+    """The labels a run of key names spells, backspaces applied. A keymap
+    entry for two presses (`33`: b3) turns the label the first press made
+    into another; a keymap without such entries never sees the rule."""
+    out, prev = [], None
     for k in presses:
         if k == "backspace":
             if out:
                 out.pop()
+            prev = None
+        elif prev is not None and out and prev + k in keymap:
+            out[-1] = keymap[prev + k]
+            prev = k
         elif k in keymap:
             out.append(keymap[k])
+            prev = k
+        else:
+            prev = None
     return out
 
 

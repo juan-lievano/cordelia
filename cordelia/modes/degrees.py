@@ -6,6 +6,12 @@ answer in, then the voice says the degree, the note sounds again, and a
 beat of rest. The right answer is always given, nothing is ever judged out
 loud, and the register varies so that the degree, not the pitch, is what
 is being asked.
+
+A session asks the list of degrees given on the command line, any subset
+of the twelve (`major`, `minor` and `all` stand for three of them); the
+list is the exercise, and a new list is a new exercise. Flats are typed by
+pressing the degree's key twice and are stored as their own labels (`b3`
+is never `3`), so the record says what was asked whatever the list.
 """
 
 import math
@@ -19,22 +25,30 @@ NAME = "degrees"
 PITCH_CLASS = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 NOTE_NAMES = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"]
 
-SCALES = {
-    "major": dict(steps=(0, 2, 4, 5, 7, 9, 11), labels=("1", "2", "3", "4", "5", "6", "7")),
-    "natural-minor": dict(steps=(0, 2, 3, 5, 7, 8, 10), labels=("1", "2", "b3", "4", "5", "b6", "b7")),
-    "harmonic-minor": dict(steps=(0, 2, 3, 5, 7, 8, 11), labels=("1", "2", "b3", "4", "5", "b6", "7")),
-}
-SCALE_ALIASES = {"minor": "natural-minor", "aeolian": "natural-minor",
-                 "ionian": "major", "harmonic": "harmonic-minor"}
-
+# Every degree there is, in order up the octave, with its semitones above
+# the tonic. A label is what is asked, typed, spoken and stored; the number
+# only tells the synth which note to play.
+SEMITONES = {"1": 0, "b2": 1, "2": 2, "b3": 3, "3": 4, "4": 5, "b5": 6, "5": 7, "b6": 8, "6": 9, "b7": 10, "7": 11}
 SPOKEN = {"1": "one", "2": "two", "3": "three", "4": "four", "5": "five", "6": "six", "7": "seven",
-          "b3": "flat three", "b6": "flat six", "b7": "flat seven"}
+          "b2": "flat two", "b3": "flat three", "b5": "flat five", "b6": "flat six", "b7": "flat seven"}
+
+# A session asks a list of degrees, any subset of the twelve, given on the
+# command line; the list is the exercise, there is no level table. These
+# words stand for a list when typing, and are expanded before anything is
+# stored, so the record only ever holds the list.
+SHORTHANDS = {
+    "major": ("1", "2", "3", "4", "5", "6", "7"),
+    "minor": ("1", "2", "b3", "4", "5", "b6", "b7"),
+    "all": tuple(SEMITONES),
+}
 
 # Degree 1 is the easy one, so it turns up less often.
-DEGREE_WEIGHTS = {1: 1, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3}
-# Questions reach half an octave past the middle register either way.
+WEIGHT = {"1": 1}
+DEFAULT_WEIGHT = 3
+# Questions reach half an octave past the middle register either way: the
+# low octave asks the upper half of the scale, the high octave the lower half.
 OCTAVES = (-1, 0, 1)
-REGISTER_DEGREES = {-1: (5, 6, 7), 0: (1, 2, 3, 4, 5, 6, 7), 1: (1, 2, 3, 4)}
+REGISTER = {-1: lambda semis: semis >= 7, 0: lambda semis: True, 1: lambda semis: semis <= 5}
 OCTAVE_WEIGHTS = {-1: 2, 0: 3, 1: 2}
 OCTAVE_LEVELS = {-1: 1.1, 0: 1.0, 1: 0.9}
 OCTAVE_NAMES = {-1: "low", 0: "mid", 1: "high"}
@@ -44,14 +58,20 @@ PAUSE_BEATS = 2
 AGAIN_BEATS = 2
 REST_BEATS = 1
 INTRO_BEATS = 1                # the drone's fade-in, then the cadence, then the questions
-CADENCE = ((1, 0), (5, 0), (1, 1))   # (degree, octave): tonic, fifth, tonic an octave up
+CADENCE = (("1", 0), ("5", 0), ("1", 1))   # (degree, octave): tonic, fifth, tonic an octave up
 CADENCE_BEATS = 1              # each cadence note
 CADENCE_REST_BEATS = 2         # after the last one, before the first question
 OUTRO_SECONDS = 2.0            # drone alone after the last answer, fading out
 RING = 0.25                    # a note rings this long past its beats
 
-DEFAULTS = dict(minutes=2.0, key=None, scale="major", bpm=50.0, voice="default")
+DEFAULTS = dict(minutes=2.0, key=None, bpm=50.0, degrees=SHORTHANDS["major"], voice="default")
 MIN_BPM, MAX_BPM = 20, 240
+
+# Sessions before 2026-11-05 had a scale instead of a list and stored a degree
+# as its position in that scale; the scale's labels turn those into labels.
+OLD_SCALES = {"major": ("1", "2", "3", "4", "5", "6", "7"),
+              "natural-minor": ("1", "2", "b3", "4", "5", "b6", "b7"),
+              "harmonic-minor": ("1", "2", "b3", "4", "5", "b6", "7")}
 
 
 def random_key(rng, avoid=None):
@@ -68,36 +88,55 @@ def parse_key(text):
     return (PITCH_CLASS[root] + {"": 0, "#": 1, "b": -1}[accidental]) % 12
 
 
-def parse_scale(text):
-    name = text.strip().lower().replace("_", "-").replace(" ", "-")
-    name = SCALE_ALIASES.get(name, name)
-    return name if name in SCALES else None
-
-
 # The digits, and the keys that sit under them on a layer, so one hand can
 # answer without the layer key: h , . n e i l stand in for 1-7.
 HOME_ROW = "h,.neil"
 
 
-def keymap(scale):
-    labels = SCALES[scale]["labels"]
-    km = {str(d): labels[d - 1] for d in range(1, 8)}
-    km.update({HOME_ROW[d - 1]: labels[d - 1] for d in range(1, 8)})
-    return km
+def keymap():
+    """Digits and home-row keys name the naturals; the same key twice names
+    the flat under it (`33` is b3). Every degree is typeable whatever the
+    list asked, so a flat answered in a major session is recorded as what it was."""
+    km = {}
+    for d in range(1, 8):
+        for k in (str(d), HOME_ROW[d - 1]):
+            if f"b{d}" in SEMITONES:
+                km[k + k] = f"b{d}"
+            km[k] = str(d)
+    return dict(sorted(km.items(), key=lambda kv: SEMITONES[kv[1]]))
 
 
-def spoken(scale):
-    return {label: SPOKEN[label] for label in SCALES[scale]["labels"]}
+def parse_degrees(words):
+    """Labels and shorthands from the command line -> the list of degrees, in
+    order up the octave and without repeats, or a SystemExit saying why not."""
+    labels = []
+    for w in words:
+        labels += SHORTHANDS.get(w.lower(), (w,))
+    bad = [l for l in labels if l not in SEMITONES]
+    if bad:
+        raise SystemExit(f"no such degree: {' '.join(bad)}. Use {' '.join(SEMITONES)}, or {', '.join(SHORTHANDS)}.")
+    return tuple(sorted(set(labels), key=SEMITONES.get))
+
+
+def degrees_of(config):
+    """The degrees a session asked, for sessions from before the list too."""
+    if "degrees" in config:
+        return tuple(config["degrees"])
+    return OLD_SCALES[config.get("scale", "major")]
+
+
+def spoken(degrees):
+    return {label: SPOKEN[label] for label in degrees}
 
 
 def describe(config):
-    return f"{NOTE_NAMES[parse_key(config['key'])]} {config['scale'].replace('-', ' ')}, {config['bpm']:g} BPM"
+    return f"{NOTE_NAMES[parse_key(config['key'])]}, {' '.join(degrees_of(config))}, {config['bpm']:g} BPM"
 
 
 def bank(config, data_dir):
-    """The spoken bank, with every degree the scale can ask for."""
+    """The spoken bank, with every degree the session can ask for."""
     b = VoiceBank(config.get("voice", "default"), data_dir)
-    b.ensure(spoken(config["scale"]))
+    b.ensure(spoken(degrees_of(config)))
     return b
 
 
@@ -106,16 +145,14 @@ def configure(a, last_config, rng):
     pc = parse_key(a.key or random_key(rng, last_config and last_config.get("key")))
     if pc is None:
         raise SystemExit(f"--key {a.key!r} is not a note name")
-    scale = parse_scale(a.scale)
-    if scale is None:
-        raise SystemExit(f"--scale {a.scale!r}: choose from {', '.join(SCALES)}")
+    degrees = parse_degrees(a.degrees) if a.degrees else (degrees_of(last_config) if last_config else DEFAULTS["degrees"])
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], scale=scale, bpm=a.bpm, voice=a.voice, keys=1)
+    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), voice=a.voice, keys=1)
 
 
-def hint(config):
-    return f"keys 1-7 (or {HOME_ROW}) answer, Esc stops."
+def hint(config, width):
+    return f"keys 1-7 (or {HOME_ROW}) answer, the same key twice for the flat (33 = b3). Esc stops."
 
 
 def status(current, n, typed, config):
@@ -127,24 +164,19 @@ class Builder:
         self.config = config
         self.bank = bank
         self.beat = 60.0 / config["bpm"]
-        self.scale = SCALES[config["scale"]]
         self.pc = parse_key(config["key"])
         self.score = Score(drone={"midi": 36 + self.pc}, voice=bank.name)
 
-    def midi(self, degree, octave):
+    def midi(self, label, octave):
         # middle register tonic is octave 4; the drone root is two octaves under it
-        return 60 + self.pc + self.scale["steps"][degree - 1] + 12 * octave
+        return 60 + self.pc + SEMITONES[label] + 12 * octave
 
-    def label(self, degree):
-        return self.scale["labels"][degree - 1]
-
-    def phrase(self, t, degree, octave):
+    def phrase(self, t, label, octave):
         """Question at t. Returns (window_end, next_t)."""
         beat = self.beat
-        midi, level = self.midi(degree, octave), OCTAVE_LEVELS[octave]
+        midi, level = self.midi(label, octave), OCTAVE_LEVELS[octave]
         self.score.notes.append(Note(t, NOTE_BEATS * beat + RING, midi, level))
         voice_t = t + (NOTE_BEATS + PAUSE_BEATS) * beat
-        label = self.label(degree)
         self.score.clips.append(Clip(voice_t, label))
         voice_beats = max(1, math.ceil(self.bank.seconds(label) / beat))
         again = voice_t + voice_beats * beat
@@ -154,33 +186,35 @@ class Builder:
     def cadence(self, t):
         """Tonic, fifth, tonic an octave up, starting at t. Returns next_t."""
         beat = self.beat
-        for degree, octave in CADENCE:
+        for label, octave in CADENCE:
             self.score.notes.append(Note(t, CADENCE_BEATS * beat + RING,
-                                         self.midi(degree, octave), OCTAVE_LEVELS[octave]))
+                                         self.midi(label, octave), OCTAVE_LEVELS[octave]))
             t += CADENCE_BEATS * beat
         return t + CADENCE_REST_BEATS * beat
 
     def max_phrase(self):
-        longest = max(self.bank.seconds(l) for l in self.scale["labels"])
+        longest = max(self.bank.seconds(l) for l in degrees_of(self.config))
         return (NOTE_BEATS + PAUSE_BEATS + max(1, math.ceil(longest / self.beat))
                 + AGAIN_BEATS + REST_BEATS) * self.beat
 
 
-def pool():
-    return [((d, o), DEGREE_WEIGHTS[d] * OCTAVE_WEIGHTS[o]) for o in OCTAVES for d in REGISTER_DEGREES[o]]
+def pool(degrees):
+    """((label, octave), weight) for every question the list can ask."""
+    return [((d, o), WEIGHT.get(d, DEFAULT_WEIGHT) * OCTAVE_WEIGHTS[o])
+            for o in OCTAVES for d in degrees if REGISTER[o](SEMITONES[d])]
 
 
-def draw(rng, count):
-    """(degree, octave) pairs, never the same degree twice in a row."""
-    questions = [q for q, _ in pool()]
-    weights = [w for _, w in pool()]
+def draw(rng, degrees, count):
+    """(label, octave) pairs, never the same degree twice in a row (when there is another)."""
+    questions = [q for q, _ in pool(degrees)]
+    weights = [w for _, w in pool(degrees)]
     out, previous = [], None
     for _ in range(count):
-        degree, octave = rng.choices(questions, weights)[0]
-        while degree == previous:
-            degree, octave = rng.choices(questions, weights)[0]
-        out.append((degree, octave))
-        previous = degree
+        label, octave = rng.choices(questions, weights)[0]
+        while label == previous and len(degrees) > 1:
+            label, octave = rng.choices(questions, weights)[0]
+        out.append((label, octave))
+        previous = label
     return out
 
 
@@ -192,14 +226,14 @@ def build_session(config, bank, rng=None):
     t = b.cadence(INTRO_BEATS * b.beat)
     count = max(1, int((limit - t) // b.max_phrase()))
     items = []
-    for idx, (degree, octave) in enumerate(draw(rng, count)):
-        window_end, nxt = b.phrase(t, degree, octave)
-        items.append(dict(idx=idx, truth=b.label(degree), ask_s=t, window_end_s=window_end,
-                          meta=dict(degree=degree, octave=octave, register=OCTAVE_NAMES[octave],
-                                    midi=b.midi(degree, octave))))
+    for idx, (label, octave) in enumerate(draw(rng, config["degrees"], count)):
+        window_end, nxt = b.phrase(t, label, octave)
+        items.append(dict(idx=idx, truth=label, ask_s=t, window_end_s=window_end,
+                          meta=dict(degree=label, octave=octave, register=OCTAVE_NAMES[octave],
+                                    midi=b.midi(label, octave))))
         t = nxt
     b.score.seconds = t + OUTRO_SECONDS
-    return b.score, items, keymap(config["scale"])
+    return b.score, items, keymap()
 
 
 def build_review(config, metas, bank):
@@ -207,6 +241,9 @@ def build_review(config, metas, bank):
     b = Builder(config, bank)
     t = INTRO_BEATS * b.beat
     for m in metas:
-        _, t = b.phrase(t, m["degree"], m["octave"])
+        label = m["degree"]
+        if isinstance(label, int):                       # an old session: a position in its scale
+            label = OLD_SCALES[config.get("scale", "major")][label - 1]
+        _, t = b.phrase(t, label, m["octave"])
     b.score.seconds = t + OUTRO_SECONDS
     return b.score

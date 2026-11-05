@@ -18,7 +18,7 @@ import random
 
 from ..score import Clip, Note, Score
 from ..voice import SungBank, sung_label
-from .degrees import HOME_ROW, NOTE_NAMES, SCALES, parse_key, parse_scale, random_key  # noqa: F401
+from .degrees import HOME_ROW, NOTE_NAMES, parse_key, random_key  # noqa: F401
 
 NAME = "melody"
 
@@ -58,6 +58,18 @@ CHORDS = {
     "IV": ((4, -1), (6, -1), (1, 0)),
     "V": ((5, -1), (7, -1), (2, 0)),
 }
+SCALES = {
+    "major": dict(steps=(0, 2, 4, 5, 7, 9, 11), labels=("1", "2", "3", "4", "5", "6", "7")),
+}
+SCALE_ALIASES = {"ionian": "major"}
+
+
+def parse_scale(text):
+    name = text.strip().lower().replace("_", "-").replace(" ", "-")
+    name = SCALE_ALIASES.get(name, name)
+    return name if name in SCALES else None
+
+
 CADENCE = {"major": ("I", "V", "I", "IV", "I", "IV", "V", "I")}
 CADENCE_LAST_BEATS = 2
 
@@ -208,15 +220,16 @@ def configure(a, last_config, rng):
     scale = parse_scale(a.scale)
     if scale not in CADENCE:
         raise SystemExit(f"--scale {a.scale!r}: melody mode has a cadence for {', '.join(CADENCE)} only")
-    if a.level not in LEVELS:
-        raise SystemExit(f"level {a.level}: choose from {', '.join(map(str, LEVELS))}")
+    level = a.level if a.level is not None else (last_config or {}).get("level", DEFAULTS["level"])
+    if level not in LEVELS:
+        raise SystemExit(f"level {level}: choose from {', '.join(map(str, LEVELS))}")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], scale=scale, bpm=a.bpm, level=a.level,
-                singer=a.singer, keys=LEVELS[a.level]["notes"])
+    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], scale=scale, bpm=a.bpm, level=level,
+                singer=a.singer, keys=LEVELS[level]["notes"])
 
 
-def hint(config):
+def hint(config, width):
     spec = LEVELS[config["level"]]
     return (f"{spec['about']}. Type the {spec['notes']} degrees (1-8, or {HOME_ROW} for 1-7), "
             "backspace corrects; the last ones typed before the singing count. Esc stops.")

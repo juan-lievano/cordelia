@@ -9,21 +9,22 @@ plays, and nothing on screen says whether you were right. Standard library
 only; the spoken answers come from macOS `say`.
 
 ```sh
-cordelia                                           # 2 min, 50 BPM, major, in a random key
-cordelia --minutes 5                               # bare flags mean `degrees` too
+cordelia                                           # 2 min, 50 BPM, the degrees last asked (major at first), random key
+cordelia minor --minutes 5                         # anything that isn't a subcommand means `degrees`
 python3 -m cordelia degrees                        # the same, from the repo
-python3 -m cordelia degrees --minutes 20 --key A --scale natural-minor
+python3 -m cordelia degrees 1 2 b3 4 5 b6 b7 --key A   # any list of degrees is an exercise; minor = this list, all = the twelve
+python3 -m cordelia degrees 1 2 5 6                # a list never typed before is a new exercise from this session on
 python3 -m cordelia degrees --voice Samantha       # any `say -v ?` voice
 python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag none clears
 python3 -m cordelia degrees --midi t.mid           # also write the score as MIDI
-python3 -m cordelia melody                         # 5 min, 55 BPM, four-note melodies on 1 2 3, sung back
+python3 -m cordelia melody                         # 5 min, 55 BPM, the level last played (1 at first: four notes on 1 2 3), sung back
 python3 -m cordelia melody 2 --key G --singer chengu    # level 2
-python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualities: major minor sus4 aug 5
+python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualities at the level last played (1 at first)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
 python3 -m cordelia review                         # replay the last session's misses, with answers
 python3 -m cordelia review 12 --render r.wav
 python3 -m cordelia stats                          # every mode: by week, per degree/level, confusions
-python3 -m cordelia stats --scale natural-minor --tag headphones
+python3 -m cordelia stats --degrees minor --tag headphones
 python3 -m cordelia stats --mode melody            # one mode only
 python3 -m cordelia rescore                        # rebuild answers from the raw presses
 python3 -m cordelia tags | data
@@ -42,7 +43,7 @@ octave up (a beat each) set the key, and after two beats of rest the
 questions start, each at 50 BPM (1.2 s a beat; `--bpm` changes it):
 
 ```
-beats 1-2   the note           — press 1-7, or h , . n e i l
+beats 1-2   the note           — press 1-7, or h , . n e i l; the same key twice for the flat (33 = ♭3)
 beats 3-4   silence            — the answer window; the last key pressed in it counts
 beat  5     the voice says it  — "four", "flat seven"
 beats 6-7   the note again
@@ -50,9 +51,16 @@ beat  8     rest
 ```
 
 Without `--key`, every session draws a random key, never the one the last
-session was in. The key is the degree number whatever the scale: `3` means ♭3 in the
-minors, because the scale fixes it. Registers and weights are those of the
-original drill. Esc stops; everything before it is kept.
+session was in. The session asks the degrees listed on the command line,
+any of `1 b2 2 b3 3 4 b5 5 b6 6 b7 7` (`major`, `minor` and `all` expand
+to lists while typing; only the list is stored). The list is the exercise:
+there is no level table, `cordelia degrees 1 2 5 6` is a new exercise the
+first time it is typed, and the stats keep each list apart. Without a list
+the last degrees session's is asked again. Every degree is typeable
+whatever the list, so a ♭3 answered in a major session is recorded as ♭3.
+Registers and weights are those of the original drill: the low octave asks
+the upper half of the scale, the high octave the lower half. Esc stops;
+everything before it is kept.
 
 ### The `melody` mode
 
@@ -134,8 +142,8 @@ per session; `--keep-wav` keeps the audio too.
 
 | table        | one row per | notes |
 |--------------|-------------|-------|
-| `sessions`   | session     | mode, config as JSON (key, scale, bpm, voice, the keymap, seed), tags, outcome (`completed` / `stopped` / `aborted`), ms into the audio when it ended |
-| `items`      | question    | truth as a keymap label, onset ms, window-end ms (when the answer starts sounding), meta JSON (degree, octave, register, MIDI note) |
+| `sessions`   | session     | mode, config as JSON (key, the degrees asked or the level, bpm, voice, the keymap, seed), tags, outcome (`completed` / `stopped` / `aborted`), ms into the audio when it ended |
+| `items`      | question    | truth as a keymap label, onset ms, window-end ms (when the answer starts sounding), meta JSON (degree label, octave, register, MIDI note) |
 | `keystrokes` | key press   | ms since playback was started, key name (`4`, `space`, `other`...) |
 | `answers`    | question    | derived: answer, correct (NULL when nothing was pressed), latency from onset to the press that counted, presses in the window, late presses after it |
 
@@ -151,7 +159,7 @@ for comparing degrees, not for absolute numbers.
 degree needs 30 before a right% is printed (`MIN_WEEK`, `MIN_DEGREE` in
 `cordelia/stats.py`); until then the cell is a dash, because fifteen
 questions at even odds have a standard error of about 13 points. Filter by
-`--scale`, `--key` and `--tag` so that harder settings don't read as
+`--degrees`, `--key` and `--tag` so that harder settings don't read as
 regression. Bare `stats` opens with the one view across drills (sessions,
 questions and minutes by week and mode), then gives each mode its own
 report; `--mode degrees`, `--mode melody` or `--mode chords` gives one. The degrees

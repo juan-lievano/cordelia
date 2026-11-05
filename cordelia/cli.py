@@ -4,7 +4,9 @@ import argparse
 import json
 import os
 import random
+import shutil
 import tempfile
+import textwrap
 
 from . import review, scorer, stats, store
 from .collector import collect
@@ -18,16 +20,20 @@ def main(argv=None):
     sub = p.add_subparsers(dest="cmd", required=True)
 
     d = sub.add_parser("degrees", help="scale degrees over a drone, the answer spoken after each")
+    d.add_argument("degrees", nargs="*", metavar="DEGREE",
+                   help=f"the degrees to ask, from {' '.join(degrees.SEMITONES)}; "
+                        + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items())
+                        + " (default: the last degrees session's list)")
     d.add_argument("--minutes", type=float, default=degrees.DEFAULTS["minutes"])
     d.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
-    d.add_argument("--scale", default=degrees.DEFAULTS["scale"], help=" | ".join(degrees.SCALES))
     d.add_argument("--bpm", type=float, default=degrees.DEFAULTS["bpm"])
     d.add_argument("--voice", default=degrees.DEFAULTS["voice"], help="a `say -v ?` voice; default = system voice")
     session_flags(d)
 
     m = sub.add_parser("melody", help="short melodies over a drone, sung back after each")
-    m.add_argument("level", type=int, nargs="?", default=melody.DEFAULTS["level"],
-                   help="; ".join(f"{n}: {spec['about']}" for n, spec in melody.LEVELS.items()))
+    m.add_argument("level", type=int, nargs="?",
+                   help="; ".join(f"{n}: {spec['about']}" for n, spec in melody.LEVELS.items())
+                   + " (default: the last melody session's level)")
     m.add_argument("--minutes", type=float, default=melody.DEFAULTS["minutes"])
     m.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
     m.add_argument("--scale", default=melody.DEFAULTS["scale"], help=" | ".join(melody.CADENCE))
@@ -36,8 +42,9 @@ def main(argv=None):
     session_flags(m)
 
     c = sub.add_parser("chords", help="chord qualities, the answer spoken then arpeggiated after each")
-    c.add_argument("level", type=int, nargs="?", default=chords.DEFAULTS["level"],
-                   help="; ".join(f"{n}: {spec['about']}" for n, spec in chords.LEVELS.items()))
+    c.add_argument("level", type=int, nargs="?",
+                   help="; ".join(f"{n}: {spec['about']}" for n, spec in chords.LEVELS.items())
+                   + " (default: the last chords session's level)")
     c.add_argument("--minutes", type=float, default=chords.DEFAULTS["minutes"])
     c.add_argument("--bpm", type=float, default=chords.DEFAULTS["bpm"])
     c.add_argument("--voice", default=chords.DEFAULTS["voice"], help="a `say -v ?` voice; default = system voice")
@@ -50,7 +57,7 @@ def main(argv=None):
 
     s = sub.add_parser("stats", help="minutes by week, a right%% histogram per exercise, degree and chord confusions")
     s.add_argument("--mode", default="all", help=" | ".join(MODES) + " | all (default: every mode in turn)")
-    s.add_argument("--scale")
+    s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="degrees sessions that asked exactly this list")
     s.add_argument("--key")
     s.add_argument("--tag")
     s.add_argument("--full", action="store_true", help="minutes by week and every exercise, not just the last one played")
@@ -61,15 +68,15 @@ def main(argv=None):
 
     import sys
     argv = list(sys.argv[1:] if argv is None else argv)
-    if not argv or argv[0].startswith("-") and argv[0] not in ("-h", "--help"):
-        argv.insert(0, "degrees")          # a bare `cordelia` is a 2-minute degrees session
+    if not argv or argv[0] not in sub.choices and argv[0] not in ("-h", "--help"):
+        argv.insert(0, "degrees")          # a bare `cordelia`, `cordelia minor`, `cordelia --minutes 5`: degrees
     a = p.parse_args(argv)
     if a.cmd in MODES:
         return cmd_session(MODES[a.cmd], a)
     if a.cmd == "review":
         return review.run(a.session, a.render, a.midi)
     if a.cmd == "stats":
-        return stats.report(store.connect(), a.mode, a.scale, a.key, a.tag, a.full)
+        return stats.report(store.connect(), a.mode, a.degrees, a.key, a.tag, a.full)
     if a.cmd == "rescore":
         return cmd_rescore()
     if a.cmd == "tags":
@@ -93,7 +100,7 @@ def tags(con, flag=None):
 
 def cmd_session(mode, a):
     con = store.connect()
-    last = store.session(con, store.last_session_id(con) or 0)
+    last = store.session(con, store.last_session_id(con, mode.NAME) or 0)
     if not degrees.MIN_BPM <= a.bpm <= degrees.MAX_BPM:
         raise SystemExit(f"--bpm must be between {degrees.MIN_BPM} and {degrees.MAX_BPM}")
     config = mode.configure(a, last and last["config"], random.Random(a.seed))
@@ -118,9 +125,11 @@ def cmd_session(mode, a):
     try:
         render(score, wav, bank, progress)
         store.add_items(con, sid, items)
-        print(f"\r\x1b[Ksession {sid} · {mode.describe(config)} · {len(items)} questions, "
-              f"{score.seconds / 60:.0f} min" + (f" · tags: {', '.join(tg)}" if tg else ""))
-        print(mode.hint(config) + "\n")
+        title = (f"session {sid} · {mode.describe(config)} · {len(items)} questions, "
+                 f"{score.seconds / 60:.0f} min" + (f" · tags: {', '.join(tg)}" if tg else ""))
+        width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
+        body = "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
+        print("\r\x1b[K\n" + stats.box(title, body) + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
         keystrokes, outcome, stopped_at = collect(
             wav, ask_ms, status=lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap), config))

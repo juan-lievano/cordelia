@@ -125,8 +125,10 @@ def session(con, sid):
                 tags=json.loads(row[4]), outcome=row[5], stopped_at_ms=row[6])
 
 
-def last_session_id(con):
-    row = con.execute("SELECT max(id) FROM sessions WHERE outcome IN ('completed','stopped')").fetchone()
+def last_session_id(con, mode=None):
+    """The newest finished session, of `mode` when given."""
+    where = "outcome IN ('completed','stopped')" + (" AND mode=?" if mode else "")
+    row = con.execute(f"SELECT max(id) FROM sessions WHERE {where}", (mode,) if mode else ()).fetchone()
     return row[0]
 
 
