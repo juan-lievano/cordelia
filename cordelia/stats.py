@@ -78,7 +78,7 @@ def report(con, mode="all", scale=None, key=None, tag=None, full=False):
         right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
         blocks.append((f"{ex} · {n} questions · {right:.0f}% right · {per_bar}", histogram(ex_rows)))
         if ex_rows[0]["mode"] in ("degrees", "chords"):
-            blocks.append(("confusion · rows asked, % of each", confusion_matrix(ex_rows)))
+            blocks.append((f"confusion, {n} questions · rows asked, % of each", confusion_matrix(ex_rows)))
     print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
 
 
@@ -131,7 +131,7 @@ def histogram(rows):
 
 
 def confusion_matrix(rows):
-    """Each row an asked label: how many times, then the share of its answers (%) under each label.
+    """Each row an asked label, the share of its answers (%) under each label.
     Rows and columns in the order of the keymap the questions were asked with."""
     order = list(dict.fromkeys(l for r in rows for l in r["config"]["keymap"].values()))
     labels = sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
@@ -143,5 +143,5 @@ def confusion_matrix(rows):
         for r in asked:
             a = r["answer"] if r["answer"] not in (None, "pass") else "none"   # passes, before 2026-11-03
             counts[a] = counts.get(a, 0) + 1
-        matrix.append([l, len(asked)] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers])
-    return table(["asked", "n"] + answers, matrix)
+        matrix.append([l] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers])
+    return table(["asked"] + answers, matrix)
