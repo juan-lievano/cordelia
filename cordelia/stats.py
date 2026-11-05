@@ -1,7 +1,7 @@
 """The long view over the record: minutes practised by week, then for each
 exercise a histogram of right% over the questions answered so far in the
 order they were asked (one bar per question up to BARS questions, then BARS
-equal groups), and for degrees the confusion matrix.
+equal groups), and for degrees and chords the confusion matrix.
 """
 
 import json
@@ -9,7 +9,6 @@ import shutil
 import sys
 from datetime import datetime, timedelta
 
-DEFAULT_LAST = 500    # questions the confusion matrix covers
 BARS = 40             # most bars; past that many questions, that many groups
 BAR = 2               # columns wide
 FILL = "▓"            # dark shade: a full block is too bright in a light font
@@ -64,7 +63,7 @@ def monday(ms):
     return d - timedelta(days=d.weekday())
 
 
-def report(con, mode="all", scale=None, key=None, tag=None, last=DEFAULT_LAST, full=False):
+def report(con, mode="all", scale=None, key=None, tag=None, full=False):
     """The exercise of the last session played; with full, the practice table and every exercise."""
     rows = load(con, None if mode == "all" else mode, scale, key, tag)
     if not rows:
@@ -78,9 +77,8 @@ def report(con, mode="all", scale=None, key=None, tag=None, last=DEFAULT_LAST, f
         per_bar = "a bar per question" if n <= BARS else f"each bar the mean of ~{n / BARS:.0f}"
         right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
         blocks.append((f"{ex} · {n} questions · {right:.0f}% right · {per_bar}", histogram(ex_rows)))
-        if ex_rows[0]["mode"] == "degrees":
-            recent = ex_rows[-last:]
-            blocks.append((f"confusion, last {len(recent)} · rows asked", confusion_matrix(recent)))
+        if ex_rows[0]["mode"] in ("degrees", "chords"):
+            blocks.append(("confusion · rows asked, % of each", confusion_matrix(ex_rows)))
     print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
 
 
@@ -133,15 +131,17 @@ def histogram(rows):
 
 
 def confusion_matrix(rows):
-    labels = sorted({r["truth"] for r in rows}, key=lambda l: (int(l.lstrip("b")), l))
+    """Each row an asked label: how many times, then the share of its answers (%) under each label.
+    Rows and columns in the order of the keymap the questions were asked with."""
+    order = list(dict.fromkeys(l for r in rows for l in r["config"]["keymap"].values()))
+    labels = sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
     answers = labels + ["none"]
     matrix = []
     for l in labels:
+        asked = [r for r in rows if r["truth"] == l]
         counts = {a: 0 for a in answers}
-        for r in rows:
-            if r["truth"] != l:
-                continue
+        for r in asked:
             a = r["answer"] if r["answer"] not in (None, "pass") else "none"   # passes, before 2026-11-03
             counts[a] = counts.get(a, 0) + 1
-        matrix.append([l] + [counts[a] or "." for a in answers])
-    return table(["asked"] + answers, matrix)
+        matrix.append([l, len(asked)] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers])
+    return table(["asked", "n"] + answers, matrix)

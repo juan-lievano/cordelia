@@ -1,4 +1,4 @@
-"""cordelia: ear training that writes down every answer. Bare `cordelia` runs `degrees`; `melody` is the other drill. See README.md."""
+"""cordelia: ear training that writes down every answer. Bare `cordelia` runs `degrees`; `melody` and `chords` are the other drills. See README.md."""
 
 import argparse
 import json
@@ -8,7 +8,7 @@ import tempfile
 
 from . import review, scorer, stats, store
 from .collector import collect
-from .modes import MODES, degrees, melody
+from .modes import MODES, chords, degrees, melody
 from .synth import render
 from .voice import SINGERS
 
@@ -35,17 +35,24 @@ def main(argv=None):
     m.add_argument("--singer", default=melody.DEFAULTS["singer"], help=" | ".join(SINGERS))
     session_flags(m)
 
+    c = sub.add_parser("chords", help="chord qualities, the answer spoken then arpeggiated after each")
+    c.add_argument("level", type=int, nargs="?", default=chords.DEFAULTS["level"],
+                   help="; ".join(f"{n}: {spec['about']}" for n, spec in chords.LEVELS.items()))
+    c.add_argument("--minutes", type=float, default=chords.DEFAULTS["minutes"])
+    c.add_argument("--bpm", type=float, default=chords.DEFAULTS["bpm"])
+    c.add_argument("--voice", default=chords.DEFAULTS["voice"], help="a `say -v ?` voice; default = system voice")
+    session_flags(c)
+
     r = sub.add_parser("review", help="replay what a session missed, each with its answer")
     r.add_argument("session", nargs="?", type=int, help="session id (default: the last one)")
     r.add_argument("--midi", metavar="FILE")
     r.add_argument("--render", metavar="FILE", help="write the review WAV to FILE instead of playing it")
 
-    s = sub.add_parser("stats", help="minutes by week, a right%% histogram per exercise, degree confusions")
+    s = sub.add_parser("stats", help="minutes by week, a right%% histogram per exercise, degree and chord confusions")
     s.add_argument("--mode", default="all", help=" | ".join(MODES) + " | all (default: every mode in turn)")
     s.add_argument("--scale")
     s.add_argument("--key")
     s.add_argument("--tag")
-    s.add_argument("--last", type=int, default=stats.DEFAULT_LAST, help="questions the confusion matrix covers")
     s.add_argument("--full", action="store_true", help="minutes by week and every exercise, not just the last one played")
 
     sub.add_parser("rescore", help="rebuild every session's answers from its key presses")
@@ -62,7 +69,7 @@ def main(argv=None):
     if a.cmd == "review":
         return review.run(a.session, a.render, a.midi)
     if a.cmd == "stats":
-        return stats.report(store.connect(), a.mode, a.scale, a.key, a.tag, a.last, a.full)
+        return stats.report(store.connect(), a.mode, a.scale, a.key, a.tag, a.full)
     if a.cmd == "rescore":
         return cmd_rescore()
     if a.cmd == "tags":

@@ -18,10 +18,12 @@ python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag 
 python3 -m cordelia degrees --midi t.mid           # also write the score as MIDI
 python3 -m cordelia melody                         # 5 min, 55 BPM, four-note melodies on 1 2 3, sung back
 python3 -m cordelia melody 2 --key G --singer chengu    # level 2
+python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualities: major minor sus4 aug 5
+python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
 python3 -m cordelia review                         # replay the last session's misses, with answers
 python3 -m cordelia review 12 --render r.wav
 python3 -m cordelia stats                          # every mode: by week, per degree/level, confusions
-python3 -m cordelia stats --scale natural-minor --tag headphones --last 300
+python3 -m cordelia stats --scale natural-minor --tag headphones
 python3 -m cordelia stats --mode melody            # one mode only
 python3 -m cordelia rescore                        # rebuild answers from the raw presses
 python3 -m cordelia tags | data
@@ -93,6 +95,37 @@ move. Level 2 is 1 to 5 with half the moves stepwise (`cordelia melody 2`). A ne
 level is a new row; the session records its level with every question,
 and the stats read across levels.
 
+### The `chords` mode
+
+No drone: a chord is asked for its quality relative to its own root, and a
+key under it would be something else to hear it against. The root changes
+every question, F3 to E4, and is always the lowest note, so the bass gives
+the root and the quality is all that is asked. Levels 1-3:
+
+```
+beats 1-2   the chord
+beats 3-4   the chord again a note at a time from the root up, half a beat
+            apart, each held (three beats for a four-note chord)
+beats 5-6   a click a beat          — the answer window runs from the first
+                                      chord to the voice, so a key pressed
+                                      before or during the arpeggio counts
+beat  7     the voice names it      — "minor seven", "half diminished"
+beats 8-9   the chord
+beat  10    rest
+```
+
+Levels 4-6 are the same chords without the arpeggio before the answer: the
+chord, two clicks, the voice, then the arpeggio. The ten qualities and the
+three sets are Joe Luegers' "The 10 Best Chords" (Epic Ear Training): levels
+1 and 4 are major, minor, sus4, augmented and the bare fifth in close voicing
+(`M m s a 5`); 2 and 5 the dominant, major, minor, diminished and
+half-diminished sevenths (`d j n o h`); 3 and 6 all ten with the root an
+octave under the rest. No diminished triad: the diminished seventh stands in
+for it. Levels are rows of `LEVELS` in `cordelia/modes/chords.py`; the answer
+is stored as the quality label (`maj`, `m7b5`, ...) whatever the level, so
+the confusion matrix reads across them, and the keymap is stored with each
+session, so the keys can change without touching the record.
+
 ### What is recorded
 
 `data/cordelia.db` in the checkout (gitignored; `CORDELIA_DATA_DIR`
@@ -121,8 +154,8 @@ questions at even odds have a standard error of about 13 points. Filter by
 `--scale`, `--key` and `--tag` so that harder settings don't read as
 regression. Bare `stats` opens with the one view across drills (sessions,
 questions and minutes by week and mode), then gives each mode its own
-report; `--mode degrees` or `--mode melody` gives one. The degrees
-confusion matrix never counts a melody, and the melody tables (per level,
+report; `--mode degrees`, `--mode melody` or `--mode chords` gives one. The degrees
+confusion matrix never counts a melody or a chord, and the melody tables (per level,
 per position in the melody, per degree note by note) never count a
 degrees drill. `review` replays the questions a session got wrong or left
 unanswered, each as it sounded, answer included, and says only how long it
@@ -136,7 +169,8 @@ keymap (key name → label), `configure` (flags → config, with `keys`: how
 many presses make an answer), `bank` (the voice it answers with), `hint`
 and `status` (the two lines the terminal shows), `describe`, and
 `build_review`; `cordelia/modes/melody.py` is the second one, with its
-stats section in `cordelia/stats.py`. Everything else — rendering,
+stats section in `cordelia/stats.py`, and `cordelia/modes/chords.py` the
+third, the first without a drone. Everything else — rendering,
 collecting, scoring, storage — is shared. A score is instrument-agnostic: `--midi` writes it as a
 Standard MIDI File (notes per instrument, the drone as one long note, the
 spoken labels as lyric events) for any soundfont; a voice bank is just a
