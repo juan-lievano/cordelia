@@ -143,7 +143,7 @@ def cmd_session(mode, a):
                  f"{score.seconds / 60:.0f} min" + (f" · tags: {', '.join(tg)}" if tg else ""))
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         body = "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
-        warning = stats.box("UNCOMMITTED CHANGES", "this session is recorded with commit: null, "
+        warning = stats.box("UNCOMMITTED CHANGES", "this session is recorded with `commit: null`, "
                             "nothing says what code produced it") + "\n" if config["commit"] is None else ""
         print("\r\x1b[K\n" + warning + stats.box(title, body) + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
