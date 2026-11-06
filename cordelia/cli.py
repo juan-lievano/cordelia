@@ -139,11 +139,13 @@ def cmd_session(mode, a):
         render(score, wav, bank, progress)
         store.add_items(con, sid, items)
         title = (f"session {sid} · {mode.describe(config)} · {len(items)} questions, "
-                 f"{score.seconds / 60:.0f} min" + (f" · tags: {', '.join(tg)}" if tg else "")
-                 + (" · UNCOMMITTED CHANGES" if (config["commit"] or "").endswith("+") else ""))
+                 f"{score.seconds / 60:.0f} min" + (f" · tags: {', '.join(tg)}" if tg else ""))
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         body = "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
-        print("\r\x1b[K\n" + stats.box(title, body) + "\n")
+        warning = stats.box("UNCOMMITTED CHANGES", f"the code is not at commit {config['commit'][:-1]}: "
+                            "this session is recorded, marked with a + after the commit") + "\n" \
+            if (config["commit"] or "").endswith("+") else ""
+        print("\r\x1b[K\n" + warning + stats.box(title, body) + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
         keystrokes, outcome, stopped_at = collect(
             wav, ask_ms, status=lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap), config))
