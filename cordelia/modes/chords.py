@@ -108,10 +108,10 @@ def configure(a, last_config, rng):
 
 
 def hint(config, width):
-    """A cheat sheet: key, chord symbol, spelling against the major scale,
+    """A cheat sheet: key (chord symbol) spelling against the major scale,
     in as many equal columns as fit in `width`."""
-    entries = [f"{QUALITIES[q][2]}  {q:<4} {QUALITIES[q][3]}" for q in LEVELS[config["level"]]["qualities"]]
-    cell = max(map(len, entries)) + 4
+    entries = [f"{QUALITIES[q][2]} ({q}){' ' * (5 - len(q))}{QUALITIES[q][3]}" for q in LEVELS[config["level"]]["qualities"]]
+    cell = max(map(len, entries)) + 3
     per_line = max(1, (width + 4) // cell)
     rows = [entries[i:i + per_line] for i in range(0, len(entries), per_line)]
     return "\n".join("".join(e.ljust(cell) for e in row).rstrip() for row in rows)
