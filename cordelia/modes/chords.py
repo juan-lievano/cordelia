@@ -193,14 +193,14 @@ class Builder:
 
 
 def draw(rng, level, count):
-    """(root midi, quality) pairs: never the same quality or the same root twice in a row."""
-    qualities = LEVELS[level]["qualities"]
-    out, last_q, last_r = [], None, None
+    """(root midi, quality) pairs: never the exact same chord twice in a row."""
+    questions = [(r, q) for r in range(ROOT_LOW, ROOT_HIGH + 1) for q in LEVELS[level]["qualities"]]
+    out = []
     for _ in range(count):
-        q = rng.choice([x for x in qualities if x != last_q])
-        r = rng.choice([x for x in range(ROOT_LOW, ROOT_HIGH + 1) if x != last_r])
-        out.append((r, q))
-        last_q, last_r = q, r
+        q = rng.choice(questions)
+        while out and q == out[-1]:
+            q = rng.choice(questions)
+        out.append(q)
     return out
 
 

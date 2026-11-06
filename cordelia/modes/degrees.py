@@ -42,14 +42,13 @@ SHORTHANDS = {
     "all": tuple(SEMITONES),
 }
 
-# Degree 1 is the easy one, so it turns up less often.
+# Degree 1 is the easy one, so it turns up half as often as any other.
 WEIGHT = {"1": 1}
-DEFAULT_WEIGHT = 3
+DEFAULT_WEIGHT = 2
 # Questions reach half an octave past the middle register either way: the
 # low octave asks the upper half of the scale, the high octave the lower half.
 OCTAVES = (-1, 0, 1)
 REGISTER = {-1: lambda semis: semis >= 7, 0: lambda semis: True, 1: lambda semis: semis <= 5}
-OCTAVE_WEIGHTS = {-1: 2, 0: 3, 1: 2}
 OCTAVE_LEVELS = {-1: 1.1, 0: 1.0, 1: 0.9}
 OCTAVE_NAMES = {-1: "low", 0: "mid", 1: "high"}
 
@@ -208,21 +207,20 @@ class Builder:
 
 def pool(degrees):
     """((label, octave), weight) for every question the list can ask."""
-    return [((d, o), WEIGHT.get(d, DEFAULT_WEIGHT) * OCTAVE_WEIGHTS[o])
+    return [((d, o), WEIGHT.get(d, DEFAULT_WEIGHT))
             for o in OCTAVES for d in degrees if REGISTER[o](SEMITONES[d])]
 
 
 def draw(rng, degrees, count):
-    """(label, octave) pairs, never the same degree twice in a row (when there is another)."""
+    """(label, octave) pairs, never the exact same question twice in a row."""
     questions = [q for q, _ in pool(degrees)]
     weights = [w for _, w in pool(degrees)]
-    out, previous = [], None
+    out = []
     for _ in range(count):
-        label, octave = rng.choices(questions, weights)[0]
-        while label == previous and len(degrees) > 1:
-            label, octave = rng.choices(questions, weights)[0]
-        out.append((label, octave))
-        previous = label
+        q = rng.choices(questions, weights)[0]
+        while out and q == out[-1] and len(questions) > 1:
+            q = rng.choices(questions, weights)[0]
+        out.append(q)
     return out
 
 
