@@ -6,8 +6,9 @@ import operator
 
 from .base import SAMPLE_RATE, midi_to_freq
 
-DRONE_LEVEL = 0.27           # down from 0.40 with the root an octave up: the
-                             # same energy sits where the ear is more sensitive
+DRONE_LEVEL = 0.24           # down from 0.40 with the root an octave up: the
+                             # same energy sits where the ear is more sensitive;
+                             # then a further dB off, the ears felt pressed after a session
 
 # Drone partials as harmonics of the root, which sits two octaves under the
 # middle-register tonic (C2 for C, 65 Hz: the old C1 root was mostly below
