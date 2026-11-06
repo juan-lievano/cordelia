@@ -84,6 +84,11 @@ def keymap(scale):
     return km
 
 
+def exercise(config):
+    """What the session drilled, after the mode name in the stats: its level."""
+    return (str(config["level"]),)
+
+
 def describe(config):
     return (f"level {config['level']}, {NOTE_NAMES[parse_key(config['key'])]} "
             f"{config['scale'].replace('-', ' ')}, {config['bpm']:g} BPM")

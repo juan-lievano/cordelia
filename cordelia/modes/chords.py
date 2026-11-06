@@ -88,6 +88,11 @@ def spoken(level):
     return {q: QUALITIES[q][1] for q in LEVELS[level]["qualities"]}
 
 
+def exercise(config):
+    """What the session drilled, after the mode name in the stats: its level."""
+    return (str(config["level"]),)
+
+
 def describe(config):
     return f"level {config['level']}, {config['bpm']:g} BPM"
 

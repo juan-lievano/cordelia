@@ -1,7 +1,7 @@
 """The long view over the record: minutes practised by week, then for each
 exercise a histogram of right% over the questions answered so far in the
 order they were asked (one bar per question up to BARS questions, then BARS
-equal groups), and for degrees and chords the confusion matrix.
+equal groups), and, for a mode whose answers are single labels (LABELS), the confusion matrix.
 """
 
 import json
@@ -43,14 +43,16 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
 
 
 def exercise(mode, cfg):
-    """What is being drilled: the mode, plus the list of degrees it asked (degrees)
-    or the level (melody, chords)."""
-    parts = [mode]
-    if mode == "degrees":
-        parts += degrees_of(cfg)
-    elif cfg.get("level") is not None:
-        parts.append(str(cfg["level"]))
-    return " ".join(parts)
+    """What is being drilled: the mode, then what its module says (the degree
+    list, the level). A mode this version no longer has falls back to its level."""
+    m = MODES.get(mode)
+    parts = m.exercise(cfg) if m else ([str(cfg["level"])] if cfg.get("level") is not None else [])
+    return " ".join([mode, *parts])
+
+
+def natural(name):
+    """Sort key so that 'chords 2' comes before 'chords 10'."""
+    return [(0, int(p)) if p.isdigit() else (1, p) for p in name.split()]
 
 
 def table(headers, rows):
@@ -74,7 +76,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
     if not rows:
         print("no sessions recorded yet" + (" with those filters" if (degrees or key or tag) else ""))
         return
-    exercises = sorted({r["exercise"] for r in rows}) if full else [rows[-1]["exercise"]]
+    exercises = sorted({r["exercise"] for r in rows}, key=natural) if full else [rows[-1]["exercise"]]
     blocks = [("minutes, by week", practice(rows, exercises))] if full else []
     for ex in exercises:
         ex_rows = [r for r in rows if r["exercise"] == ex]
@@ -82,7 +84,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
         per_bar = "a bar per question" if n <= BARS else f"each bar the mean of ~{n / BARS:.0f}"
         right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
         blocks.append((f"{ex} · {n} questions · {right:.0f}% right · {per_bar}", histogram(ex_rows)))
-        if ex_rows[0]["mode"] in ("degrees", "chords"):
+        if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
             blocks.append((f"confusion, {n} questions · rows asked, % of each", confusion_matrix(ex_rows)))
     print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
 

@@ -175,8 +175,9 @@ is.
 drawn, how one question is laid on the timeline (`Builder.phrase`), the
 keymap (key name → label), `configure` (flags → config, with `keys`: how
 many presses make an answer), `bank` (the voice it answers with), `hint`
-and `status` (the two lines the terminal shows), `describe`, and
-`build_review`; `cordelia/modes/melody.py` is the second one, with its
+and `status` (the two lines the terminal shows), `describe`, `exercise`
+(what the stats group sessions by) and `LABELS` (the order of its confusion
+matrix; leave it out for a mode without one), and `build_review`; `cordelia/modes/melody.py` is the second one, with its
 stats section in `cordelia/stats.py`, and `cordelia/modes/chords.py` the
 third, the first without a drone. Everything else — rendering,
 collecting, scoring, storage — is shared. The synth is a package with one
