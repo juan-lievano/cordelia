@@ -41,6 +41,7 @@ QUALITIES = {
     "dom7": ((0, 4, 7, 10), "dominant seven", "d", "1 3 5 ♭7"),
     "dim7": ((0, 3, 6, 9), "diminished seven", "o", "1 ♭3 ♭5 ♭♭7"),
 }
+LABELS = tuple(QUALITIES)        # the order the stats list the qualities in
 TRIADS = ("maj", "min", "sus4", "aug", "5")
 # Sevenths least to most tense, Luegers' ranking; the cheat sheet shows them in this order.
 SEVENTHS = ("min7", "maj7", "m7b5", "dom7", "dim7")

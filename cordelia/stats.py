@@ -9,6 +9,7 @@ import shutil
 import sys
 from datetime import datetime, timedelta
 
+from .modes import MODES
 from .modes.degrees import degrees_of, parse_degrees
 
 BARS = 40             # most bars; past that many questions, that many groups
@@ -136,9 +137,8 @@ def histogram(rows):
 
 def confusion_matrix(rows):
     """Each row an asked label, the share of its answers (%) under each label.
-    Rows and columns in the order of the newest session's keymap, so a reordered
-    cheat sheet reorders the matrix for old sessions too."""
-    order = list(dict.fromkeys(l for r in reversed(rows) for l in r["config"]["keymap"].values()))
+    Rows and columns in the mode's LABELS order."""
+    order = list(MODES[rows[0]["mode"]].LABELS)
     labels = sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
     answers = labels + ["none"]
     matrix = []

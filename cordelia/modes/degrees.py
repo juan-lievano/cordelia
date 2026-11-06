@@ -106,6 +106,9 @@ def keymap():
     return dict(sorted(km.items(), key=lambda kv: SEMITONES[kv[1]]))
 
 
+LABELS = tuple(dict.fromkeys(keymap().values()))   # the order the stats list the degrees in
+
+
 def parse_degrees(words):
     """Labels and shorthands from the command line -> the list of degrees, in
     order up the octave and without repeats, or a SystemExit saying why not."""
