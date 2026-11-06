@@ -139,8 +139,10 @@ def confusion_matrix(rows):
     """Each row an asked label, the share of its answers (%) under each label.
     Rows and columns in the mode's LABELS order."""
     order = list(MODES[rows[0]["mode"]].LABELS)
-    labels = sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
-    answers = labels + ["none"]
+    rank = lambda l: (order.index(l) if l in order else len(order), l)
+    labels = sorted({r["truth"] for r in rows}, key=rank)
+    given = {r["answer"] for r in rows} - set(labels) - {None, "pass"}    # answered though never asked
+    answers = labels + sorted(given, key=rank) + ["none"]
     matrix = []
     for l in labels:
         asked = [r for r in rows if r["truth"] == l]
