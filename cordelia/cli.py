@@ -86,15 +86,16 @@ def main(argv=None):
 
 
 def commit():
-    """The checkout's commit, with `+` after it when the tree has uncommitted changes, or None.
-    The code at that commit is what every rule the config leaves implicit meant."""
+    """The checkout's commit, or None when the tree has uncommitted changes (or git is
+    missing). The code at that commit is what every rule the config leaves implicit meant;
+    with edits on top of it, the record can't say what ran."""
     here = os.path.dirname(os.path.abspath(__file__))
     try:
-        head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=here, capture_output=True, text=True, check=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=here, capture_output=True, text=True, check=True).stdout
+        if subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=here, capture_output=True, text=True, check=True).stdout:
+            return None
+        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=here, capture_output=True, text=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
-    return head + ("+" if dirty else "")
 
 
 def session_flags(p):
@@ -142,9 +143,8 @@ def cmd_session(mode, a):
                  f"{score.seconds / 60:.0f} min" + (f" · tags: {', '.join(tg)}" if tg else ""))
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         body = "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
-        warning = stats.box("UNCOMMITTED CHANGES", f"the code is not at commit {config['commit'][:-1]}: "
-                            "this session is recorded, marked with a + after the commit") + "\n" \
-            if (config["commit"] or "").endswith("+") else ""
+        warning = stats.box("UNCOMMITTED CHANGES", "this session is recorded with commit: null, "
+                            "nothing says what code produced it") + "\n" if config["commit"] is None else ""
         print("\r\x1b[K\n" + warning + stats.box(title, body) + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
         keystrokes, outcome, stopped_at = collect(
