@@ -1,10 +1,11 @@
-"""cordelia: ear training that writes down every answer. Bare `cordelia` runs `degrees`; `melody` and `chords` are the other drills. See README.md."""
+"""cordelia: ear training that writes down every answer. The drills are `degrees`, `melody` and `chords`. See README.md."""
 
 import argparse
 import json
 import os
 import random
 import shutil
+import sys
 import tempfile
 import textwrap
 
@@ -66,10 +67,8 @@ def main(argv=None):
     sub.add_parser("tags", help="show the sticky tags")
     sub.add_parser("data", help="where the database lives")
 
-    import sys
-    argv = list(sys.argv[1:] if argv is None else argv)
-    if not argv or argv[0] not in sub.choices and argv[0] not in ("-h", "--help"):
-        argv.insert(0, "degrees")          # a bare `cordelia`, `cordelia minor`, `cordelia --minutes 5`: degrees
+    if not (sys.argv[1:] if argv is None else argv):
+        return p.print_help()
     a = p.parse_args(argv)
     if a.cmd in MODES:
         return cmd_session(MODES[a.cmd], a)

@@ -9,8 +9,8 @@ plays, and nothing on screen says whether you were right. Standard library
 only; the spoken answers come from macOS `say`.
 
 ```sh
-cordelia                                           # 2 min, 50 BPM, the degrees last asked (major at first), random key
-cordelia minor --minutes 5                         # anything that isn't a subcommand means `degrees`
+cordelia degrees                                   # 2 min, 50 BPM, the degrees last asked (major at first), random key
+cordelia degrees minor --minutes 5
 python3 -m cordelia degrees                        # the same, from the repo
 python3 -m cordelia degrees 1 2 b3 4 5 b6 b7 --key A   # any list of degrees is an exercise; minor = this list, all = the twelve
 python3 -m cordelia degrees 1 2 5 6                # a list never typed before is a new exercise from this session on
@@ -58,8 +58,10 @@ there is no level table, `cordelia degrees 1 2 5 6` is a new exercise the
 first time it is typed, and the stats keep each list apart. Without a list
 the last degrees session's is asked again. Every degree is typeable
 whatever the list, so a ♭3 answered in a major session is recorded as ♭3.
-Registers and weights are those of the original drill: the low octave asks
-the upper half of the scale, the high octave the lower half. Esc stops;
+Registers are those of the original drill: the low octave asks the upper
+half of the scale, the high octave the lower half. Every question is equally
+likely except degree 1, asked half as often; nothing is avoided but the exact
+same question twice in a row. Esc stops;
 everything before it is kept.
 
 ### The `melody` mode
