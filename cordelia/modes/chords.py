@@ -71,8 +71,8 @@ REST_BEATS = 1
 INTRO_BEATS = 2                # silence before the first question
 OUTRO_SECONDS = 0.0            # no drone to fade, so nothing after the last rest
 RING = 0.25
-CHORD_LEVEL = 0.55             # per note in the block: four of them sum to about a melody note
-ARPEGGIO_LEVEL = 0.7
+CHORD_LEVEL = 0.8              # per note in the block: 0.55 sat 4-5 dB under a melody note once the strike decayed
+ARPEGGIO_LEVEL = 1.0
 CLICK_LEVEL = 0.5
 
 DEFAULTS = dict(minutes=4.0, bpm=50.0, level=1, voice="default")

@@ -21,7 +21,7 @@ from .base import SAMPLE_RATE, cached
 # (harmonic, level): the series at the attack; the roll-off with pitch is
 # done by the decay times below, since a high partial dies sooner anyway.
 HARMONICS = ((1, 1.00), (2, 0.55), (3, 0.30), (4, 0.18), (6, 0.08), (8, 0.04))
-DECAY = 1.4                  # seconds for the fundamental to fall to 1/e
+DECAY = 1.1                  # seconds for the fundamental to fall to 1/e; 1.4 rang a little too long
 DECAY_SLOPE = 0.8            # partial h decays in DECAY / h ** SLOPE
 ATTACK = 0.006               # seconds, raised cosine: struck, not bowed
 RELEASE = 0.05               # seconds: the tail is cut with a short fade, no click
