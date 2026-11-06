@@ -5,6 +5,7 @@ import json
 import os
 import random
 import shutil
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -84,6 +85,18 @@ def main(argv=None):
         print(store.data_dir())
 
 
+def commit():
+    """The checkout's commit, with `+` after it when the tree has uncommitted changes, or None.
+    The code at that commit is what every rule the config leaves implicit meant."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    try:
+        head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=here, capture_output=True, text=True, check=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=here, capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return head + ("+" if dirty else "")
+
+
 def session_flags(p):
     p.add_argument("--tag", help="tag this and every later session (sticky); 'none' clears")
     p.add_argument("--keep-wav", action="store_true", help="keep the session's WAV in data/sessions/")
@@ -107,6 +120,7 @@ def cmd_session(mode, a):
     score, items, keymap = mode.build_session(config, bank, random.Random(a.seed))
     config["keymap"] = keymap
     config["seed"] = a.seed
+    config["commit"] = commit()
 
     tg = tags(con, a.tag)
     sid = store.new_session(con, mode.NAME, config, tg)
