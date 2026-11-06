@@ -152,7 +152,7 @@ def configure(a, last_config, rng):
 
 
 def hint(config, width):
-    return f"keys 1-7 (or {HOME_ROW}) answer, the same key twice for the flat (33 = b3). Esc stops."
+    return f"keys 1-7 (or {HOME_ROW}) answer, the same key twice for the flat (33 = b3)."
 
 
 def status(current, n, typed, config):

@@ -232,7 +232,7 @@ def configure(a, last_config, rng):
 def hint(config, width):
     spec = LEVELS[config["level"]]
     return (f"{spec['about']}. Type the {spec['notes']} degrees (1-8, or {HOME_ROW} for 1-7), "
-            "backspace corrects; the last ones typed before the singing count. Esc stops.")
+            "backspace corrects; the last ones typed before the singing count.")
 
 
 def status(current, n, typed, config):

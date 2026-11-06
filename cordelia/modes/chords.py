@@ -35,14 +35,15 @@ QUALITIES = {
     "sus4": ((0, 5, 7), "sus four", "s", "1 4 5"),
     "aug": ((0, 4, 8), "augmented", "a", "1 3 ♯5"),
     "5": ((0, 7), "five", "5", "1 5"),
-    "dom7": ((0, 4, 7, 10), "dominant seven", "d", "1 3 5 ♭7"),
-    "maj7": ((0, 4, 7, 11), "major seven", "j", "1 3 5 7"),
     "min7": ((0, 3, 7, 10), "minor seven", "n", "1 ♭3 5 ♭7"),
-    "dim7": ((0, 3, 6, 9), "diminished seven", "o", "1 ♭3 ♭5 ♭♭7"),
+    "maj7": ((0, 4, 7, 11), "major seven", "j", "1 3 5 7"),
     "m7b5": ((0, 3, 6, 10), "half diminished", "h", "1 ♭3 ♭5 ♭7"),
+    "dom7": ((0, 4, 7, 10), "dominant seven", "d", "1 3 5 ♭7"),
+    "dim7": ((0, 3, 6, 9), "diminished seven", "o", "1 ♭3 ♭5 ♭♭7"),
 }
 TRIADS = ("maj", "min", "sus4", "aug", "5")
-SEVENTHS = ("dom7", "maj7", "min7", "dim7", "m7b5")
+# Sevenths least to most tense, Luegers' ranking; the cheat sheet shows them in this order.
+SEVENTHS = ("min7", "maj7", "m7b5", "dom7", "dim7")
 
 # qualities: what may be asked; open: the root an octave under the rest;
 # arpeggio: "before" the answer window (levels 1-3) or only "after" the voice.
@@ -113,11 +114,12 @@ def hint(config, width):
     cell = max(map(len, entries)) + 4
     per_line = max(1, (width + 4) // cell)
     rows = [entries[i:i + per_line] for i in range(0, len(entries), per_line)]
-    return "\n".join("".join(e.ljust(cell) for e in row).rstrip() for row in rows) + "\nEsc stops."
+    return "\n".join("".join(e.ljust(cell) for e in row).rstrip() for row in rows)
 
 
 def status(current, n, typed, config):
-    return f"question {current}/{n}   [{typed[-1] if typed else ' '}]"
+    answer = f"{QUALITIES[typed[-1]][2]} ({typed[-1]})" if typed else " "
+    return f"question {current}/{n}   [{answer}]"
 
 
 def voicing(root, quality, open_):
