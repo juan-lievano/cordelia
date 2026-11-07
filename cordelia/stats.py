@@ -99,7 +99,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
 def box(title, body):
     """The body in a rounded box with the title set into its top edge, centred on the terminal."""
     lines = body.split("\n")
-    width = max(len(title) + 4, *(len(l) for l in lines)) + 2 * PAD
+    width = max(max(len(l) for l in lines) + 2 * PAD, len(title) + 5)   # the title needs "╭─ … ──╮", no padding
     top = "╭─ " + title + " " + "─" * (width - len(title) - 3) + "╮"
     mid = ["│" + " " * PAD + l.ljust(width - 2 * PAD) + " " * PAD + "│" for l in ["", *lines, ""]]
     bottom = "╰" + "─" * width + "╯"
