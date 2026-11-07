@@ -5,6 +5,7 @@ equal groups), and, for a mode whose answers are single labels (LABELS), the con
 """
 
 import json
+import math
 import shutil
 import sys
 from datetime import datetime, timedelta
@@ -20,6 +21,8 @@ SHORT = 44            # a terminal with fewer lines than this gets half the rows
 PAD = 2               # columns between a box's edge and its contents
 NONE = "∅"            # the confusion matrix's column for questions with no answer
 RECENT = 200          # the confusion matrix covers this many of the latest questions: how the misses go now
+FIFTHS = ("C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F")       # the circle, clockwise from the top
+MINORS = ("a", "e", "b", "f#", "c#", "g#", "eb", "bb", "f", "c", "g", "d")       # each one's relative minor
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
@@ -92,12 +95,17 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
         trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
         if trend is not None:
             title += f" · trend {100 * trend:+.2f} pp / 100 questions"
-        blocks.append(box(title, histogram(ex_rows)))
+        hist = box(title, histogram(ex_rows))
+        blocks.append(hist)
         if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
             recent = ex_rows[-RECENT:]
             span = f"q: {n - len(recent) + 1}-{n}"
-            blocks.append(beside([box(f"confusion, {span}, rows asked, %", confusion_matrix(recent)),
-                                  box(f"{span}, %", recall_precision(recent))]))
+            boxes = [box(f"confusion, {span}, rows asked, %", confusion_matrix(recent)),
+                     box(f"{span}, %", recall_precision(recent))]
+            room = len(hist.split("\n")[0]) - sum(len(b.split("\n")[0]) + 1 for b in boxes) - 2 - 2 * PAD
+            if room >= 24:       # the width left beside the two boxes, under the histogram: the circle of fifths
+                boxes.append(box("circle of fifths", circle(room, len(boxes[0].split("\n")) - 4)))
+            blocks.append(beside(boxes))
     print("\n" + "\n\n".join(centred(b) for b in blocks) + "\n")
 
 
@@ -188,6 +196,23 @@ def confusion_matrix(rows):
             counts[a] = counts.get(a, 0) + 1
         matrix.append([l] + [pct(counts[a], len(asked)) for a in answers])
     return table([""] + answers, matrix, dividers=(0, len(answers) - 1))     # labels | answers | ∅
+
+
+def circle(width, height):
+    """The circle of fifths, majors around the outside and their relative minors
+    inside, C at the top, drawn to fill width columns and height lines."""
+    grid = [[" "] * width for _ in range(height)]
+    cx, cy = (width - 1) / 2, (height - 1) / 2
+
+    def put(label, rx, ry, k):
+        a = math.radians(30 * k)
+        x, y = round(cx + rx * math.sin(a) - (len(label) - 1) / 2), round(cy - ry * math.cos(a))
+        grid[y][x:x + len(label)] = label
+
+    for k, (major, minor) in enumerate(zip(FIFTHS, MINORS)):
+        put(major, cx - 1, cy, k)
+        put(minor, (cx - 1) / 2, cy / 2, k)
+    return "\n".join("".join(r).rstrip() for r in grid)
 
 
 def asked_labels(rows):
