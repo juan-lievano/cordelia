@@ -103,6 +103,8 @@ def session_flags(p):
     p.add_argument("--keep-wav", action="store_true", help="keep the session's WAV in data/sessions/")
     p.add_argument("--midi", metavar="FILE", help="also write the score as a MIDI file")
     p.add_argument("--seed", type=int, help="draw the same questions again")
+    p.add_argument("--ambient", action="store_true",
+                   help="just play: the same audio, no keys read, nothing recorded (Esc stops)")
 
 
 def tags(con, flag=None):
@@ -122,6 +124,8 @@ def cmd_session(mode, a):
     config["keymap"] = keymap
     config["seed"] = a.seed
     config["commit"] = commit()
+    if a.ambient:
+        return ambient(a, mode, config, score, items, bank)
 
     tg = tags(con, a.tag)
     sid = store.new_session(con, mode.NAME, config, tg)
@@ -157,6 +161,30 @@ def cmd_session(mode, a):
     except BaseException:
         store.finish_session(con, sid, "aborted", None)
         raise
+    finally:
+        if tmpdir:
+            if os.path.exists(wav):
+                os.remove(wav)
+            os.rmdir(tmpdir)
+
+
+def ambient(a, mode, config, score, items, bank):
+    """The session's audio and nothing else: no session row, no keys, no answers."""
+    if a.tag:
+        print("--tag ignored: an ambient session is not recorded")
+    if a.midi:
+        score.to_midi(a.midi)
+    tmpdir = None
+    if a.keep_wav:
+        wav = str(store.sessions_dir() / "ambient.wav")
+    else:
+        tmpdir = tempfile.mkdtemp(prefix="cordelia_")
+        wav = os.path.join(tmpdir, "session.wav")
+    try:
+        render(score, wav, bank, progress)
+        title = f"ambient · {mode.describe(config)} · {len(items)} questions, {score.seconds / 60:.0f} min · not recorded"
+        print("\r\x1b[K\n" + stats.box(title, "Esc stops.") + "\n")
+        collect(wav, [round(it["ask_s"] * 1000) for it in items])
     finally:
         if tmpdir:
             if os.path.exists(wav):

@@ -17,6 +17,7 @@ python3 -m cordelia degrees 1 2 5 6                # a list never typed before i
 python3 -m cordelia degrees --voice Samantha       # any `say -v ?` voice
 python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag none clears
 python3 -m cordelia degrees --midi t.mid           # also write the score as MIDI
+python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
 python3 -m cordelia melody                         # 5 min, 55 BPM, the level last played (1 at first: four notes on 1 2 3), sung back
 python3 -m cordelia melody 2 --key G --singer chengu    # level 2
 python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualities at the level last played (1 at first)
