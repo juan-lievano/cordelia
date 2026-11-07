@@ -78,6 +78,13 @@ def random_key(rng, avoid=None):
     return rng.choice([k for k in NOTE_NAMES if k != avoid])
 
 
+def tonic_midi(pc):
+    """The middle-register tonic: G3 to F#4, the octave that puts the exercise
+    where sung melodies sit (most questions then fall in G3-G5), and in the
+    melody mode keeps every sung note within six semitones of a sample."""
+    return 60 + pc if pc <= 6 else 48 + pc
+
+
 def parse_key(text):
     """'G', 'f#', 'Bb' -> pitch class 0-11, or None."""
     key = text.strip().capitalize().replace("s", "#")
@@ -171,12 +178,11 @@ class Builder:
         self.config = config
         self.bank = bank
         self.beat = 60.0 / config["bpm"]
-        self.pc = parse_key(config["key"])
-        self.score = Score(drone={"midi": 36 + self.pc}, voice=bank.name)
+        self.tonic = tonic_midi(parse_key(config["key"]))
+        self.score = Score(drone={"midi": self.tonic - 24}, voice=bank.name)   # the root two octaves under the tonic
 
     def midi(self, label, octave):
-        # middle register tonic is octave 4; the drone root is two octaves under it
-        return 60 + self.pc + SEMITONES[label] + 12 * octave
+        return self.tonic + SEMITONES[label] + 12 * octave
 
     def phrase(self, t, label, octave):
         """Question at t. Returns (window_end, next_t)."""

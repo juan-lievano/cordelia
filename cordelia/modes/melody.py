@@ -18,7 +18,7 @@ import random
 
 from ..score import Clip, Note, Score
 from ..voice import SungBank, sung_label
-from .degrees import HOME_ROW, NOTE_NAMES, parse_key, random_key  # noqa: F401
+from .degrees import HOME_ROW, NOTE_NAMES, parse_key, random_key, tonic_midi  # noqa: F401
 
 NAME = "melody"
 
@@ -92,12 +92,6 @@ def exercise(config):
 def describe(config):
     return (f"level {config['level']}, {NOTE_NAMES[parse_key(config['key'])]} "
             f"{config['scale'].replace('-', ' ')}, {config['bpm']:g} BPM")
-
-
-def tonic_midi(pc):
-    """The melody's tonic: the octave that keeps it nearest middle C, which
-    also keeps every sung note within six semitones of a sample."""
-    return 60 + pc if pc <= 6 else 48 + pc
 
 
 class Builder:
