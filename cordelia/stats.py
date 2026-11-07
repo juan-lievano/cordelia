@@ -91,7 +91,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
             title += f" · trend {100 * trend:+.2f} pp / 100 questions"
         blocks.append((title, histogram(ex_rows)))
         if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
-            blocks.append((f"confusion, {n} questions · rows asked, % of each · trend pp / 100 asked", confusion_matrix(ex_rows)))
+            blocks.append((f"confusion, {n} questions · rows asked, % of each", confusion_matrix(ex_rows)))
     print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
 
 
@@ -155,8 +155,8 @@ def histogram(rows):
 
 
 def confusion_matrix(rows):
-    """Each row an asked label, the share of its answers (%) under each label, and the trend of its
-    right% over its own questions (pp per 100 of them). Rows and columns in the mode's LABELS order."""
+    """Each row an asked label, the share of its answers (%) under each label.
+    Rows and columns in the mode's LABELS order."""
     order = list(MODES[rows[0]["mode"]].LABELS)
     rank = lambda l: (order.index(l) if l in order else len(order), l)
     labels = sorted({r["truth"] for r in rows}, key=rank)
@@ -169,7 +169,5 @@ def confusion_matrix(rows):
         for r in asked:
             a = r["answer"] if r["answer"] not in (None, "pass") else "none"   # passes, before 2026-11-03
             counts[a] = counts.get(a, 0) + 1
-        trend = slope(range(len(asked)), [100 * (r["correct"] == 1) for r in asked])
-        matrix.append([l] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers]
-                      + [f"{100 * trend:+.1f}" if trend is not None else "."])
-    return table([""] + answers + ["trend"], matrix, dividers=(0, len(answers) - 1))     # labels | answers | none  trend
+        matrix.append([l] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers])
+    return table([""] + answers, matrix, dividers=(0, len(answers) - 1))     # labels | answers | none
