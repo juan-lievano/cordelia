@@ -172,4 +172,4 @@ def confusion_matrix(rows):
         trend = slope(range(len(asked)), [100 * (r["correct"] == 1) for r in asked])
         matrix.append([l] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers]
                       + [f"{100 * trend:+.1f}" if trend is not None else "."])
-    return table([""] + answers + ["trend"], matrix, dividers=(0, len(answers) - 1))     # labels | answers | none  trend
+    return table([""] + answers + ["pp/100q"], matrix, dividers=(0, len(answers) - 1))     # labels | answers | none  trend
