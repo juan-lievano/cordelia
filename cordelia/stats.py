@@ -17,6 +17,8 @@ BAR = 2               # columns wide
 FILL = "▓"            # dark shade: a full block is too bright in a light font
 ROWS = 20             # rows of the histogram, 100% / ROWS each; labelled every 10%
 PAD = 2               # columns between a box's edge and its contents
+PARTS = 3             # consecutive parts of an exercise's questions, a confusion matrix each, oldest first
+NONE = "∅"            # the confusion matrix's column for questions with no answer
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
@@ -79,7 +81,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
         print("no sessions recorded yet" + (" with those filters" if (degrees or key or tag) else ""))
         return
     exercises = sorted({r["exercise"] for r in rows}, key=natural) if full else [rows[-1]["exercise"]]
-    blocks = [("minutes, by week", practice(rows, exercises))] if full else []
+    blocks = [box("minutes, by week", practice(rows, exercises))] if full else []
     for ex in exercises:
         ex_rows = [r for r in rows if r["exercise"] == ex]
         n = len(ex_rows)
@@ -89,21 +91,34 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
         trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
         if trend is not None:
             title += f" · trend {100 * trend:+.2f} pp / 100 questions"
-        blocks.append((title, histogram(ex_rows)))
+        blocks.append(box(title, histogram(ex_rows)))
         if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
-            blocks.append((f"confusion, {n} questions · rows asked, % of each", confusion_matrix(ex_rows)))
-    print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
+            blocks.append(beside(box(t, b) for t, b in confusion_matrices(ex_rows)))
+    print("\n" + "\n\n".join(centred(b) for b in blocks) + "\n")
 
 
 def box(title, body):
-    """The body in a rounded box with the title set into its top edge, centred on the terminal."""
+    """The body in a rounded box with the title set into its top edge."""
     lines = body.split("\n")
     width = max(len(title) + 4, *(len(l) for l in lines)) + 2 * PAD
     top = "╭─ " + title + " " + "─" * (width - len(title) - 3) + "╮"
     mid = ["│" + " " * PAD + l.ljust(width - 2 * PAD) + " " * PAD + "│" for l in ["", *lines, ""]]
     bottom = "╰" + "─" * width + "╯"
-    margin = " " * max(0, (shutil.get_terminal_size().columns - width - 2) // 2) if sys.stdout.isatty() else ""
-    return "\n".join(margin + l for l in [top, *mid, bottom])
+    return "\n".join([top, *mid, bottom])
+
+
+def beside(boxes):
+    """Boxes of the same height side by side, a space apart."""
+    rows = zip(*(b.split("\n") for b in boxes))
+    return "\n".join(" ".join(r) for r in rows)
+
+
+def centred(text):
+    """Every line shifted right so the widest sits in the middle of the terminal."""
+    lines = text.split("\n")
+    width = max(len(l) for l in lines)
+    margin = " " * max(0, (shutil.get_terminal_size().columns - width) // 2) if sys.stdout.isatty() else ""
+    return "\n".join(margin + l for l in lines)
 
 
 def practice(rows, exercises):
@@ -154,20 +169,38 @@ def histogram(rows):
     return "\n".join(lines)
 
 
-def confusion_matrix(rows):
-    """Each row an asked label, the share of its answers (%) under each label.
-    Rows and columns in the mode's LABELS order."""
+def confusion_matrices(rows):
+    """(title, table) for each of PARTS consecutive parts of the questions in the
+    order asked, the title naming its question numbers: each asked label a row,
+    the share of its answers (%) under each label, with ∅ for no answer, and its
+    F1 in that part (2·right / (asked + typed): a label guessed often or avoided
+    scores low either way). Rows and columns are the same in every part, in the
+    mode's LABELS order. The title loses its first word when it would widen the box."""
     order = list(MODES[rows[0]["mode"]].LABELS)
     rank = lambda l: (order.index(l) if l in order else len(order), l)
     labels = sorted({r["truth"] for r in rows}, key=rank)
     given = {r["answer"] for r in rows} - set(labels) - {None, "pass"}    # answered though never asked
-    answers = labels + sorted(given, key=rank) + ["none"]
-    matrix = []
-    for l in labels:
-        asked = [r for r in rows if r["truth"] == l]
-        counts = {a: 0 for a in answers}
-        for r in asked:
-            a = r["answer"] if r["answer"] not in (None, "pass") else "none"   # passes, before 2026-11-03
-            counts[a] = counts.get(a, 0) + 1
-        matrix.append([l] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers])
-    return table([""] + answers, matrix, dividers=(0, len(answers) - 1))     # labels | answers | none
+    answers = labels + sorted(given, key=rank) + [NONE]
+    n = len(rows)
+    out, first = [], 1
+    for k in range(PARTS):
+        part = [r for i, r in enumerate(rows) if i * PARTS // n == k]
+        matrix = []
+        for l in labels:
+            asked = [r for r in part if r["truth"] == l]
+            typed = sum(1 for r in part if r["answer"] == l)
+            counts = {a: 0 for a in answers}
+            for r in asked:
+                a = r["answer"] if r["answer"] not in (None, "pass") else NONE   # passes, before 2026-11-03
+                counts[a] = counts.get(a, 0) + 1
+            pct = lambda c: f"{100 * c / len(asked):.0f}" if c else "."
+            f1 = f"{200 * counts[l] / (len(asked) + typed):.0f}" if counts[l] else "."
+            matrix.append([l] + [pct(counts[a]) for a in answers] + [f1])
+        out.append((f"q: {first}-{first + len(part) - 1}, rows asked, %", matrix))
+        first += len(part)
+    boxes = []
+    for title, m in out:
+        body = table([""] + answers + ["F1"], m, dividers=(0, len(answers) - 1, len(answers)))   # labels | answers | ∅ | F1
+        width = max(len(l) for l in body.split("\n"))
+        boxes.append((("confusion, " + title) if len("confusion, " + title) + 4 <= width else title, body))
+    return boxes
