@@ -92,7 +92,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
             title += f" · trend {100 * trend:+.2f} pp / 100 questions"
         blocks.append((title, histogram(ex_rows)))
         if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
-            blocks.append(("confusion, rows asked, %", confusion_matrix(ex_rows)))
+            blocks.append((f"confusion, {n} questions, rows asked, %", confusion_matrix(ex_rows)))
     print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
 
 
