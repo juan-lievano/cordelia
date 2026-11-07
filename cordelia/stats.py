@@ -95,7 +95,8 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
         title = f"{ex} · {n} questions · {right:.0f}% right · {per_bar}"
         trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
         if trend is not None:
-            title += f" · trend {100 * trend:+.2f} pp / 100 questions"
+            b, se = trend
+            title += f" · trend {100 * b:+.1f} ± {100 * se:.1f} pp / 100 questions"
         hist = box(title, histogram(ex_rows))
         blocks.append(hist)
         if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
@@ -153,14 +154,20 @@ def practice(rows, exercises):
 
 
 def slope(xs, ys):
-    """Least-squares slope of ys over xs, fitted to every point (not the bars); None when the fit is undefined."""
+    """Least-squares slope of ys over xs and its standard error, fitted to every point
+    (not the bars); None when the fit is undefined. The error takes the points as
+    independent, which they are not quite (a bad day is a run of them), so it is a floor."""
     xs, ys = list(xs), list(ys)
     n = len(xs)
-    if n < 2:
+    if n < 3:
         return None
     mx, my = sum(xs) / n, sum(ys) / n
     sxx = sum((x - mx) ** 2 for x in xs)
-    return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx if sxx else None
+    if not sxx:
+        return None
+    b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
+    rss = sum((y - my - b * (x - mx)) ** 2 for x, y in zip(xs, ys))
+    return b, math.sqrt(rss / (n - 2) / sxx)
 
 
 def histogram(rows):
