@@ -213,7 +213,7 @@ def circle(width, height):
     for k, (major, minor) in enumerate(zip(FIFTHS, MINORS)):
         put(major, cx - 1, cy, k)
         put(minor, (cx - 1) * INNER[0], cy * INNER[1], k)
-    return "\n".join("".join(r).rstrip() for r in grid)
+    return "\n".join("".join(r) for r in grid)
 
 
 def asked_labels(rows):
