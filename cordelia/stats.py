@@ -22,7 +22,6 @@ PAD = 2               # columns between a box's edge and its contents
 NONE = "∅"            # the confusion matrix's column for questions with no answer
 RECENT = 200          # the confusion matrix covers this many of the latest questions: how the misses go now
 FIFTHS = ("C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F")       # the circle, clockwise from the top
-MINORS = ("a", "e", "b", "f#", "c#", "g#", "eb", "bb", "f", "c", "g", "d")       # each one's relative minor
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
@@ -199,19 +198,13 @@ def confusion_matrix(rows):
 
 
 def circle(width, height):
-    """The circle of fifths, majors around the outside and their relative minors
-    inside, C at the top, drawn to fill width columns and height lines."""
+    """The circle of fifths, C at the top, drawn to fill width columns and height lines."""
     grid = [[" "] * width for _ in range(height)]
     cx, cy = (width - 1) / 2, (height - 1) / 2
-
-    def put(label, rx, ry, k):
+    for k, key in enumerate(FIFTHS):
         a = math.radians(30 * k)
-        x, y = round(cx + rx * math.sin(a) - (len(label) - 1) / 2), round(cy - ry * math.cos(a))
-        grid[y][x:x + len(label)] = label
-
-    for k, (major, minor) in enumerate(zip(FIFTHS, MINORS)):
-        put(major, cx - 1, cy, k)
-        put(minor, (cx - 1) / 2, cy / 2, k)
+        x, y = round(cx + (cx - 1) * math.sin(a) - (len(key) - 1) / 2), round(cy - cy * math.cos(a))
+        grid[y][x:x + len(key)] = key
     return "\n".join("".join(r).rstrip() for r in grid)
 
 
