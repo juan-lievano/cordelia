@@ -18,6 +18,7 @@ FILL = "▓"            # dark shade: a full block is too bright in a light font
 ROWS = 20             # rows of the histogram, 100% / ROWS each; labelled every 10%
 PAD = 2               # columns between a box's edge and its contents
 NONE = "∅"            # the confusion matrix's column for questions with no answer
+RECENT = 200          # the confusion matrix covers this many of the latest questions: how the misses go now
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
@@ -92,7 +93,8 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
             title += f" · trend {100 * trend:+.2f} pp / 100 questions"
         blocks.append((title, histogram(ex_rows)))
         if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
-            blocks.append((f"confusion, q: 1-{n}, rows asked, %", confusion_matrix(ex_rows)))
+            recent = ex_rows[-RECENT:]
+            blocks.append((f"confusion, q: {n - len(recent) + 1}-{n}, rows asked, %", confusion_matrix(recent)))
     print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
 
 
@@ -157,7 +159,9 @@ def histogram(rows):
 
 def confusion_matrix(rows):
     """Each row an asked label, the share of its answers (%) under each label,
-    ∅ for no answer. Rows and columns in the mode's LABELS order."""
+    ∅ for no answer, then its recall (asked and answered so, % of asked: the
+    diagonal again) and precision (% of the times it was answered that it was
+    asked). Rows and columns in the mode's LABELS order."""
     order = list(MODES[rows[0]["mode"]].LABELS)
     rank = lambda l: (order.index(l) if l in order else len(order), l)
     labels = sorted({r["truth"] for r in rows}, key=rank)
@@ -166,9 +170,13 @@ def confusion_matrix(rows):
     matrix = []
     for l in labels:
         asked = [r for r in rows if r["truth"] == l]
+        typed = sum(1 for r in rows if r["answer"] == l)
         counts = {a: 0 for a in answers}
         for r in asked:
             a = r["answer"] if r["answer"] not in (None, "pass") else NONE   # passes, before 2026-11-03
             counts[a] = counts.get(a, 0) + 1
-        matrix.append([l] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers])
-    return table([""] + answers, matrix, dividers=(0, len(answers) - 1))     # labels | answers | ∅
+        pct = lambda part, whole: f"{100 * part / whole:.0f}" if part else "."
+        matrix.append([l] + [pct(counts[a], len(asked)) for a in answers]
+                      + [pct(counts[l], len(asked)), pct(counts[l], typed)])
+    return table([""] + answers + ["recall", "precision"], matrix,
+                 dividers=(0, len(answers) - 1, len(answers)))     # labels | answers | ∅ | recall precision
