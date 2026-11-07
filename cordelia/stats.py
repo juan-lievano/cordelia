@@ -104,16 +104,16 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
                      box(f"{span}, %", recall_precision(recent))]
             room = len(hist.split("\n")[0]) - sum(len(b.split("\n")[0]) + 1 for b in boxes) - 2 - 2 * PAD
             if room >= 24:       # the width left beside the two boxes, under the histogram: the circle of fifths
-                boxes.append(box("circle of fifths", circle(room, len(boxes[0].split("\n")) - 4)))
+                boxes.append(box("", circle(room, len(boxes[0].split("\n")) - 4)))
             blocks.append(beside(boxes))
     print("\n" + "\n\n".join(centred(b) for b in blocks) + "\n")
 
 
 def box(title, body):
-    """The body in a rounded box with the title set into its top edge."""
+    """The body in a rounded box with the title, if any, set into its top edge."""
     lines = body.split("\n")
-    width = max(max(len(l) for l in lines) + 2 * PAD, len(title) + 5)   # the title needs "╭─ … ──╮", no padding
-    top = "╭─ " + title + " " + "─" * (width - len(title) - 3) + "╮"
+    width = max(max(len(l) for l in lines) + 2 * PAD, len(title) + 5 if title else 0)   # "╭─ title ──╮", unpadded
+    top = ("╭─ " + title + " " + "─" * (width - len(title) - 3) if title else "╭" + "─" * width) + "╮"
     mid = ["│" + " " * PAD + l.ljust(width - 2 * PAD) + " " * PAD + "│" for l in ["", *lines, ""]]
     bottom = "╰" + "─" * width + "╯"
     return "\n".join([top, *mid, bottom])
