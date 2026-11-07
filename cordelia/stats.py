@@ -81,7 +81,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
         print("no sessions recorded yet" + (" with those filters" if (degrees or key or tag) else ""))
         return
     exercises = sorted({r["exercise"] for r in rows}, key=natural) if full else [rows[-1]["exercise"]]
-    blocks = [("minutes, by week", practice(rows, exercises))] if full else []
+    blocks = [box("minutes, by week", practice(rows, exercises))] if full else []
     for ex in exercises:
         ex_rows = [r for r in rows if r["exercise"] == ex]
         n = len(ex_rows)
@@ -91,22 +91,36 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
         trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
         if trend is not None:
             title += f" · trend {100 * trend:+.2f} pp / 100 questions"
-        blocks.append((title, histogram(ex_rows)))
+        blocks.append(box(title, histogram(ex_rows)))
         if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
             recent = ex_rows[-RECENT:]
-            blocks.append((f"confusion, q: {n - len(recent) + 1}-{n}, rows asked, %", confusion_matrix(recent)))
-    print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
+            span = f"q: {n - len(recent) + 1}-{n}"
+            blocks.append(beside([box(f"confusion, {span}, rows asked, %", confusion_matrix(recent)),
+                                  box(f"{span}, %", recall_precision(recent))]))
+    print("\n" + "\n\n".join(centred(b) for b in blocks) + "\n")
 
 
 def box(title, body):
-    """The body in a rounded box with the title set into its top edge, centred on the terminal."""
+    """The body in a rounded box with the title set into its top edge."""
     lines = body.split("\n")
     width = max(max(len(l) for l in lines) + 2 * PAD, len(title) + 5)   # the title needs "╭─ … ──╮", no padding
     top = "╭─ " + title + " " + "─" * (width - len(title) - 3) + "╮"
     mid = ["│" + " " * PAD + l.ljust(width - 2 * PAD) + " " * PAD + "│" for l in ["", *lines, ""]]
     bottom = "╰" + "─" * width + "╯"
-    margin = " " * max(0, (shutil.get_terminal_size().columns - width - 2) // 2) if sys.stdout.isatty() else ""
-    return "\n".join(margin + l for l in [top, *mid, bottom])
+    return "\n".join([top, *mid, bottom])
+
+
+def beside(boxes):
+    """Boxes of the same height side by side, a space apart."""
+    return "\n".join(" ".join(r) for r in zip(*(b.split("\n") for b in boxes)))
+
+
+def centred(text):
+    """Every line shifted right so the widest sits in the middle of the terminal."""
+    lines = text.split("\n")
+    width = max(len(l) for l in lines)
+    margin = " " * max(0, (shutil.get_terminal_size().columns - width) // 2) if sys.stdout.isatty() else ""
+    return "\n".join(margin + l for l in lines)
 
 
 def practice(rows, exercises):
@@ -159,24 +173,37 @@ def histogram(rows):
 
 def confusion_matrix(rows):
     """Each row an asked label, the share of its answers (%) under each label,
-    ∅ for no answer, then its recall (asked and answered so, % of asked: the
-    diagonal again) and precision (% of the times it was answered that it was
-    asked). Rows and columns in the mode's LABELS order."""
-    order = list(MODES[rows[0]["mode"]].LABELS)
-    rank = lambda l: (order.index(l) if l in order else len(order), l)
-    labels = sorted({r["truth"] for r in rows}, key=rank)
+    ∅ for no answer. Rows and columns in the mode's LABELS order."""
+    labels = asked_labels(rows)
     given = {r["answer"] for r in rows} - set(labels) - {None, "pass"}    # answered though never asked
-    answers = labels + sorted(given, key=rank) + [NONE]
+    answers = labels + sorted(given, key=lambda l: (l in MODES[rows[0]["mode"]].LABELS, l)) + [NONE]
     matrix = []
     for l in labels:
         asked = [r for r in rows if r["truth"] == l]
-        typed = sum(1 for r in rows if r["answer"] == l)
         counts = {a: 0 for a in answers}
         for r in asked:
             a = r["answer"] if r["answer"] not in (None, "pass") else NONE   # passes, before 2026-11-03
             counts[a] = counts.get(a, 0) + 1
-        pct = lambda part, whole: f"{100 * part / whole:.0f}" if part else "."
-        matrix.append([l] + [pct(counts[a], len(asked)) for a in answers]
-                      + [pct(counts[l], len(asked)), pct(counts[l], typed)])
-    return table([""] + answers + ["recall", "precision"], matrix,
-                 dividers=(0, len(answers) - 1, len(answers)))     # labels | answers | ∅ | recall precision
+        matrix.append([l] + [pct(counts[a], len(asked)) for a in answers])
+    return table([""] + answers, matrix, dividers=(0, len(answers) - 1))     # labels | answers | ∅
+
+
+def asked_labels(rows):
+    """The labels asked, in the mode's LABELS order."""
+    order = list(MODES[rows[0]["mode"]].LABELS)
+    return sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
+
+
+def pct(part, whole):
+    return f"{100 * part / whole:.0f}" if part else "."
+
+
+def recall_precision(rows):
+    """Each asked label's recall (answered so when asked, % of asked: the matrix's
+    diagonal) and precision (asked when answered so, % of the answers)."""
+    out = []
+    for l in asked_labels(rows):
+        right = sum(1 for r in rows if r["truth"] == l and r["answer"] == l)
+        out.append([l, pct(right, sum(1 for r in rows if r["truth"] == l)),
+                    pct(right, sum(1 for r in rows if r["answer"] == l))])
+    return table(["", "recall", "precision"], out)
