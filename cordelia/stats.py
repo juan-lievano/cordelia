@@ -55,13 +55,15 @@ def natural(name):
     return [(0, int(p)) if p.isdigit() else (1, p) for p in name.split()]
 
 
-def table(headers, rows):
+def table(headers, rows, dividers=(0,)):
+    """Columns two spaces apart, a rule under the header, and a vertical line after each
+    column in `dividers` (default: after the row labels)."""
     rows = [[str(c) for c in r] for r in rows]
     widths = [max(len(h), *(len(r[i]) for r in rows)) if rows else len(h) for i, h in enumerate(headers)]
-    line = "  ".join(h.ljust(w) for h, w in zip(headers, widths))
-    out = [line, "  ".join("-" * w for w in widths)]
-    out += ["  ".join(c.ljust(w) for c, w in zip(r, widths)) for r in rows]
-    return "\n".join(out)
+    gap = lambda i, mid: (" " + mid + " ") if i in dividers else "  "
+    fmt = lambda cells, mid="│": "".join(c.ljust(w) + (gap(i, mid) if i < len(widths) - 1 else "")
+                                       for i, (c, w) in enumerate(zip(cells, widths)))
+    return "\n".join([fmt(headers), fmt(["─" * w for w in widths], "┼").replace(" ", "─"), *[fmt(r) for r in rows]])
 
 
 def monday(ms):
@@ -116,7 +118,7 @@ def practice(rows, exercises):
            + [cell(sum(minutes.get((w, ex), 0) for ex in exercises))] for w in weeks]
     out.append(["total"] + [cell(sum(m for (_, e), m in minutes.items() if e == ex)) for ex in exercises]
                + [cell(sum(minutes.values()))])
-    return table(["week of"] + exercises + ["all"], out)
+    return table(["week of"] + exercises + ["all"], out, dividers=(0, len(exercises)))
 
 
 def histogram(rows):
@@ -153,4 +155,4 @@ def confusion_matrix(rows):
             a = r["answer"] if r["answer"] not in (None, "pass") else "none"   # passes, before 2026-11-03
             counts[a] = counts.get(a, 0) + 1
         matrix.append([l] + [f"{100 * counts[a] / len(asked):.0f}" if counts[a] else "." for a in answers])
-    return table(["asked"] + answers, matrix)
+    return table([""] + answers, matrix, dividers=(0, len(answers) - 1))     # labels | answers | none
