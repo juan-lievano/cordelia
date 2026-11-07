@@ -23,7 +23,7 @@ NONE = "∅"            # the confusion matrix's column for questions with no an
 RECENT = 200          # the confusion matrix covers this many of the latest questions: how the misses go now
 FIFTHS = ("C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F")       # the circle, clockwise from the top
 MINORS = ("a", "e", "b", "f#", "c#", "g#", "eb", "bb", "f", "c", "g", "d")       # each one's relative minor, spelt by its key signature
-INNER = (0.6, 0.75)   # the minors' ring, as a share of the majors' width and height: just inside their majors
+INNER = (0.5, 0.5)    # the minors' ring, as a share of the majors' width and height
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
