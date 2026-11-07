@@ -85,7 +85,11 @@ def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
         n = len(ex_rows)
         per_bar = "a bar per question" if n <= BARS else f"each bar the mean of ~{n / BARS:.0f}"
         right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
-        blocks.append((f"{ex} · {n} questions · {right:.0f}% right · {per_bar}", histogram(ex_rows)))
+        title = f"{ex} · {n} questions · {right:.0f}% right · {per_bar}"
+        trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
+        if trend is not None:
+            title += f" · trend {100 * trend:+.2f} pp / 100 questions"
+        blocks.append((title, histogram(ex_rows)))
         if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
             blocks.append((f"confusion, {n} questions · rows asked, % of each", confusion_matrix(ex_rows)))
     print("\n" + "\n\n".join(box(t, b) for t, b in blocks) + "\n")
@@ -119,6 +123,17 @@ def practice(rows, exercises):
     out.append(["total"] + [cell(sum(m for (_, e), m in minutes.items() if e == ex)) for ex in exercises]
                + [cell(sum(minutes.values()))])
     return table(["week of"] + exercises + ["all"], out, dividers=(0, len(exercises)))
+
+
+def slope(xs, ys):
+    """Least-squares slope of ys over xs, fitted to every point (not the bars); None when the fit is undefined."""
+    xs, ys = list(xs), list(ys)
+    n = len(xs)
+    if n < 2:
+        return None
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
+    return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx if sxx else None
 
 
 def histogram(rows):
