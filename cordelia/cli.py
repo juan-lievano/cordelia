@@ -10,7 +10,7 @@ import sys
 import tempfile
 import textwrap
 
-from . import review, scorer, stats, store
+from . import journal, review, scorer, stats, store
 from .collector import collect
 from .modes import MODES, chords, degrees, melody
 from .synth import render
@@ -57,13 +57,13 @@ def main(argv=None):
     r.add_argument("--midi", metavar="FILE")
     r.add_argument("--render", metavar="FILE", help="write the review WAV to FILE instead of playing it")
 
-    s = sub.add_parser("stats", help="minutes by week, a right%% histogram per exercise, degree and chord confusions")
+    s = sub.add_parser("stats", help="the last exercise played: a right%% histogram, degree and chord confusions")
     s.add_argument("--mode", default="all", help=" | ".join(MODES) + " | all (default: every mode in turn)")
     s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="degrees sessions that asked exactly this list")
     s.add_argument("--key")
     s.add_argument("--tag")
-    s.add_argument("--full", action="store_true", help="minutes by week and every exercise, not just the last one played")
 
+    sub.add_parser("journal", help="the practice wall: a column per week, a cell per day shaded by minutes")
     sub.add_parser("rescore", help="rebuild every session's answers from its key presses")
     sub.add_parser("tags", help="show the sticky tags")
     sub.add_parser("data", help="where the database lives")
@@ -76,7 +76,9 @@ def main(argv=None):
     if a.cmd == "review":
         return review.run(a.session, a.render, a.midi)
     if a.cmd == "stats":
-        return stats.report(store.connect(), a.mode, a.degrees, a.key, a.tag, a.full)
+        return stats.report(store.connect(), a.mode, a.degrees, a.key, a.tag)
+    if a.cmd == "journal":
+        return journal.show(store.connect())
     if a.cmd == "rescore":
         return cmd_rescore()
     if a.cmd == "tags":

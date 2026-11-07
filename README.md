@@ -24,9 +24,10 @@ python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualit
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
 python3 -m cordelia review                         # replay the last session's misses, with answers
 python3 -m cordelia review 12 --render r.wav
-python3 -m cordelia stats                          # every mode: by week, per degree/level, confusions
+python3 -m cordelia stats                          # the last exercise played: histogram, trend, confusions
 python3 -m cordelia stats --degrees minor --tag headphones
-python3 -m cordelia stats --mode melody            # one mode only
+python3 -m cordelia stats --mode melody            # the last melody session's level
+python3 -m cordelia journal                        # minutes practised, a cell per day, a column per week
 python3 -m cordelia rescore                        # rebuild answers from the raw presses
 python3 -m cordelia tags | data
 ```
@@ -158,19 +159,17 @@ for comparing degrees, not for absolute numbers.
 
 ### Stats and review
 
-`stats` never shows a single session. Weeks need 100 questions and a
-degree needs 30 before a right% is printed (`MIN_WEEK`, `MIN_DEGREE` in
-`cordelia/stats.py`); until then the cell is a dash, because fifteen
-questions at even odds have a standard error of about 13 points. Filter by
-`--degrees`, `--key` and `--tag` so that harder settings don't read as
-regression. Bare `stats` opens with the one view across drills (sessions,
-questions and minutes by week and mode), then gives each mode its own
-report; `--mode degrees`, `--mode melody` or `--mode chords` gives one. The degrees
-confusion matrix never counts a melody or a chord, and the melody tables (per level,
-per position in the melody, per degree note by note) never count a
-degrees drill. `review` replays the questions a session got wrong or left
-unanswered, each as it sounded, answer included, and says only how long it
-is.
+`stats` reports the exercise of the last session played: a histogram of
+right% over its questions in the order they were asked, the trend with its
+standard error, and for degrees and chords the confusion matrix and the
+recall and precision of each answer over the latest 500 questions.
+`--mode`, `--degrees`, `--key` and `--tag` pick a different last session,
+so that harder settings don't read as regression. An exercise is its mode
+and its content (the degree list, the level), and no table mixes two.
+`journal` is the practice wall: a column per week, a cell per weekday,
+shaded by the minutes practised that day across every mode. `review`
+replays the questions a session got wrong or left unanswered, each as it
+sounded, answer included, and says only how long it is.
 
 ### Adding a mode
 

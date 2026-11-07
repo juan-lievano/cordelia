@@ -1,14 +1,14 @@
-"""The long view over the record: minutes practised by week, then for each
-exercise a histogram of right% over the questions answered so far in the
-order they were asked (one bar per question up to BARS questions, then BARS
-equal groups), and, for a mode whose answers are single labels (LABELS), the confusion matrix.
+"""How the last exercise played is going: a histogram of right% over the
+questions answered so far in the order they were asked (one bar per question
+up to BARS questions, then BARS equal groups), and, for a mode whose answers
+are single labels (LABELS), the confusion matrix. Minutes practised are the
+journal's.
 """
 
 import json
 import math
 import shutil
 import sys
-from datetime import datetime, timedelta
 
 from .modes import MODES
 from .modes.degrees import degrees_of, parse_degrees
@@ -57,11 +57,6 @@ def exercise(mode, cfg):
     return " ".join([mode, *parts])
 
 
-def natural(name):
-    """Sort key so that 'chords 2' comes before 'chords 10'."""
-    return [(0, int(p)) if p.isdigit() else (1, p) for p in name.split()]
-
-
 def table(headers, rows, dividers=(0,)):
     """Columns two spaces apart, a rule under the header, and a vertical line after each
     column in `dividers` (default: after the row labels)."""
@@ -73,41 +68,34 @@ def table(headers, rows, dividers=(0,)):
     return "\n".join([fmt(headers), fmt(["─" * w for w in widths], "┼").replace(" ", "─"), *[fmt(r) for r in rows]])
 
 
-def monday(ms):
-    d = datetime.fromtimestamp(ms / 1000).date()
-    return d - timedelta(days=d.weekday())
-
-
-def report(con, mode="all", degrees=None, key=None, tag=None, full=False):
-    """The exercise of the last session played; with full, the practice table and every exercise."""
+def report(con, mode="all", degrees=None, key=None, tag=None):
+    """The exercise of the last session played, within the filters."""
     degrees = parse_degrees(degrees) if degrees else None
     rows = load(con, None if mode == "all" else mode, degrees, key, tag)
     if not rows:
         print("no sessions recorded yet" + (" with those filters" if (degrees or key or tag) else ""))
         return
-    exercises = sorted({r["exercise"] for r in rows}, key=natural) if full else [rows[-1]["exercise"]]
-    blocks = [box("minutes, by week", practice(rows, exercises))] if full else []
-    for ex in exercises:
-        ex_rows = [r for r in rows if r["exercise"] == ex]
-        n = len(ex_rows)
-        per_bar = "a bar per question" if n <= BARS else f"each bar the mean of ~{n / BARS:.0f}"
-        right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
-        title = f"{ex} · {n} questions · {right:.0f}% right · {per_bar}"
-        trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
-        if trend is not None:
-            b, se = trend
-            title += f" · trend {100 * b:+.1f} ± {100 * se:.1f} pp / 100 questions"
-        hist = box(title, histogram(ex_rows))
-        blocks.append(hist)
-        if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
-            recent = ex_rows[-RECENT:]
-            span = f"q: {n - len(recent) + 1}-{n}"
-            boxes = [box(f"confusion, {span}, rows asked, %", confusion_matrix(recent)),
-                     box(f"{span}, %", recall_precision(recent))]
-            room = len(hist.split("\n")[0]) - sum(len(b.split("\n")[0]) + 1 for b in boxes) - 2 - 2 * PAD
-            if room >= 24:       # the width left beside the two boxes, under the histogram: the circle of fifths
-                boxes.append(box("", circle(room, len(boxes[0].split("\n")) - 4)))
-            blocks.append(beside(boxes))
+    ex = rows[-1]["exercise"]
+    ex_rows = [r for r in rows if r["exercise"] == ex]
+    n = len(ex_rows)
+    per_bar = "a bar per question" if n <= BARS else f"each bar the mean of ~{n / BARS:.0f}"
+    right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
+    title = f"{ex} · {n} questions · {right:.0f}% right · {per_bar}"
+    trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
+    if trend is not None:
+        b, se = trend
+        title += f" · trend {100 * b:+.1f} ± {100 * se:.1f} pp / 100 questions"
+    hist = box(title, histogram(ex_rows))
+    blocks = [hist]
+    if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
+        recent = ex_rows[-RECENT:]
+        span = f"q: {n - len(recent) + 1}-{n}"
+        boxes = [box(f"confusion, {span}, rows asked, %", confusion_matrix(recent)),
+                 box(f"{span}, %", recall_precision(recent))]
+        room = len(hist.split("\n")[0]) - sum(len(b.split("\n")[0]) + 1 for b in boxes) - 2 - 2 * PAD
+        if room >= 24:       # the width left beside the two boxes, under the histogram: the circle of fifths
+            boxes.append(box("", circle(room, len(boxes[0].split("\n")) - 4)))
+        blocks.append(beside(boxes))
     print("\n" + "\n\n".join(centred(b) for b in blocks) + "\n")
 
 
@@ -132,25 +120,6 @@ def centred(text):
     width = max(len(l) for l in lines)
     margin = " " * max(0, (shutil.get_terminal_size().columns - width) // 2) if sys.stdout.isatty() else ""
     return "\n".join(margin + l for l in lines)
-
-
-def practice(rows, exercises):
-    """Minutes by week and exercise, with a total row and column."""
-    minutes = {}
-    seen = set()
-    for r in rows:
-        if r["sid"] in seen:
-            continue
-        seen.add(r["sid"])
-        minutes[(monday(r["started"]), r["exercise"])] = \
-            minutes.get((monday(r["started"]), r["exercise"]), 0) + (r["stopped"] or 0) / 6e4
-    weeks = sorted({w for w, _ in minutes})
-    cell = lambda m: f"{m:.0f}" if m else "."
-    out = [[str(w)] + [cell(minutes.get((w, ex), 0)) for ex in exercises]
-           + [cell(sum(minutes.get((w, ex), 0) for ex in exercises))] for w in weeks]
-    out.append(["total"] + [cell(sum(m for (_, e), m in minutes.items() if e == ex)) for ex in exercises]
-               + [cell(sum(minutes.values()))])
-    return table(["week of"] + exercises + ["all"], out, dividers=(0, len(exercises)))
 
 
 def slope(xs, ys):
