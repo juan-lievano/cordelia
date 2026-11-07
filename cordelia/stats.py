@@ -178,7 +178,7 @@ def histogram(rows):
         cells = [FILL * BAR if p is not None and p >= y - 1e-9 else " " * BAR for p in pcts]
         lines.append(f"{y:>3.0f}" if y % 10 == 0 else "   ") 
         lines[-1] += " │ " + " ".join(cells)
-    lines.append("    └─" + "─" * ((BAR + 1) * bars - 1) + "  ")   # the slack keeps the right edge off the bars
+    lines.append("    └─" + "─" * ((BAR + 1) * bars - 1) + " ")   # one column of slack keeps the edge off the bars
     return "\n".join(lines)
 
 
