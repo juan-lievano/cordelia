@@ -16,6 +16,7 @@ BARS = 40             # most bars; past that many questions, that many groups
 BAR = 2               # columns wide
 FILL = "▓"            # dark shade: a full block is too bright in a light font
 ROWS = 20             # rows of the histogram, 100% / ROWS each; labelled every 10%
+SHORT = 44            # a terminal with fewer lines than this gets half the rows, so a report fits
 PAD = 2               # columns between a box's edge and its contents
 NONE = "∅"            # the confusion matrix's column for questions with no answer
 RECENT = 200          # the confusion matrix covers this many of the latest questions: how the misses go now
@@ -162,8 +163,9 @@ def histogram(rows):
         bins[i * bars // n].append(r)
     pcts = [100 * sum(1 for r in b if r["correct"] == 1) / len(b) if b else None for b in bins]
     lines = []
-    for level in range(ROWS, 0, -1):
-        y = level * 100 / ROWS
+    rows_ = ROWS if shutil.get_terminal_size(fallback=(0, SHORT)).lines >= SHORT else ROWS // 2   # piped: tall
+    for level in range(rows_, 0, -1):
+        y = level * 100 / rows_
         cells = [FILL * BAR if p is not None and p >= y - 1e-9 else " " * BAR for p in pcts]
         lines.append(f"{y:>3.0f}" if y % 10 == 0 else "   ") 
         lines[-1] += " │ " + " ".join(cells)
