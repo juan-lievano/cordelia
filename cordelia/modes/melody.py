@@ -19,7 +19,7 @@ space-separated string), so the stats read across them.
 import random
 
 from ..score import Clip, Note, Score
-from ..voice import SungBank, sung_label
+from ..voice import SYLLABLE, SungBank, sung_label
 from .degrees import HOME_ROW, NOTE_NAMES, SEMITONES, parse_degrees, parse_key, random_key, tonic_midi
 
 NAME = "melody"
@@ -228,8 +228,8 @@ def configure(a, last_config, rng):
 
 def hint(config, width):
     return (f"{config['length']} notes on {' '.join(config['degrees'])}, spread {config['spread']:g}, heard {config['hearings']}x. "
-            f"Keys 1-8 (or {HOME_ROW}{OCTAVE_KEY}), shifted ({FLAT_ROW}) for the flat (> = b3); "
-            "a note past the last starts over, backspace clears.")
+            f"Keys 1-8 (or {HOME_ROW}{OCTAVE_KEY}), shifted ({FLAT_ROW}) for the flat (> = b3). "
+            + ", ".join(f"{d} {SYLLABLE[d]}" for d in config["degrees"] if d.startswith("b")))
 
 
 def status(current, n, typed, config):
