@@ -2,7 +2,7 @@
 
 The session opens with the asked degrees sung up to the octave over the
 tonic and fifth, so the key is set before anything is asked. Each question
-is one melody of a few quarter notes, played three times with a bar of
+is one melody of a few quarter notes, played a few times with a bar of
 clicks between, then a bar of clicks to think, then sung back in solfege on
 its own pitches. You type the degrees, one key per note; a note past the
 last starts the answer over, backspace clears it, and what stands when the
@@ -29,15 +29,15 @@ DEGREES = dict(SEMITONES, **{"8": 12})
 
 # degrees: what a melody may use; length: how many notes; step: the chance each
 # move goes to the degree just above or below in the list, the rest of the
-# moves going to any other degree in it, a repeat included. The first note
-# is uniform over the degrees.
+# moves going to any other degree in it, a repeat included (the first note
+# is uniform over the degrees); hearings: how many times a melody is played
+# before the answer.
 DEFAULTS = dict(minutes=5.0, key=None, bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, step=0.5,
-                singer="jennifer")
+                hearings=3, singer="jennifer")
 
-# A question, in beats: the melody, a bar of clicks, the melody, clicks,
-# the melody, a bar of clicks to think, then the answer sung a note a beat,
-# and a rest.
-HEARINGS = 3
+# A question, in beats: the melody, then a bar of clicks and the melody
+# again for each further hearing, a bar of clicks to think, the answer sung
+# a note a beat, and a rest.
 CLICK_BEATS = 4
 ANSWER_CLICK_BEATS = 4         # between the last hearing and the answer
 REST_BEATS = 2
@@ -80,7 +80,8 @@ def recipe(config):
     """The three things that make the exercise, as words. The first melody
     session (2026-11-03) drew every move uniformly and has no step share."""
     step = config["step"]
-    return (" ".join(config["degrees"]), f"{config['length']} notes", "any move" if step is None else f"step {step:g}")
+    return (" ".join(config["degrees"]), f"{config['length']} notes", "any move" if step is None else f"step {step:g}",
+            f"heard {config['hearings']}x")
 
 
 def exercise(config):
@@ -133,10 +134,10 @@ class Builder:
 
     def phrase(self, t, degrees):
         """Question at t. Returns (window_end, next_t)."""
-        for i in range(HEARINGS):
-            t = self.melody(t, degrees)
-            if i < HEARINGS - 1:
+        for i in range(self.config["hearings"]):
+            if i:
                 t = self.clicks(t)
+            t = self.melody(t, degrees)
         t = self.clicks(t, ANSWER_CLICK_BEATS)
         window_end = t
         t = self.sing(t, degrees)
@@ -156,7 +157,8 @@ class Builder:
         return t + CADENCE_REST_BEATS * self.beat
 
     def phrase_beats(self, notes):
-        return HEARINGS * notes + (HEARINGS - 1) * CLICK_BEATS + ANSWER_CLICK_BEATS + notes + REST_BEATS
+        hearings = self.config["hearings"]
+        return hearings * notes + (hearings - 1) * CLICK_BEATS + ANSWER_CLICK_BEATS + notes + REST_BEATS
 
 
 def next_note(rng, config, last):
@@ -207,18 +209,21 @@ def configure(a, last_config, rng):
     degrees = parse_degrees(a.degrees, DEGREES) if a.degrees else tuple(last["degrees"])
     length = a.length if a.length is not None else last["length"]
     step = a.step if a.step is not None else last["step"]
+    hearings = a.hearings if a.hearings is not None else last["hearings"]
     if length < 1:
         raise SystemExit("--length must be at least 1")
+    if hearings < 1:
+        raise SystemExit("--hearings must be at least 1")
     if not 0 <= step <= 1:
         raise SystemExit("--step is a share, 0 to 1")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
     return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), length=length, step=step,
-                singer=a.singer, keys=length)
+                hearings=hearings, singer=a.singer, keys=length)
 
 
 def hint(config, width):
-    return (f"{config['length']} notes on {' '.join(config['degrees'])}, step {config['step']:g}. "
+    return (f"{config['length']} notes on {' '.join(config['degrees'])}, step {config['step']:g}, heard {config['hearings']}x. "
             f"Keys 1-8 (or {HOME_ROW}{OCTAVE_KEY}), shifted ({FLAT_ROW}) for the flat (> = b3); "
             "a note past the last starts over, backspace clears.")
 

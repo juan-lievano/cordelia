@@ -40,6 +40,7 @@ def main(argv=None):
     m.add_argument("--length", type=int, help="notes in a melody (default: the last session's)")
     m.add_argument("--step", type=float,
                    help="share of the moves that go to a neighbour in the list, 0-1 (default: the last session's)")
+    m.add_argument("--hearings", type=int, help="times a melody is played before the answer (default: the last session's)")
     m.add_argument("--minutes", type=float, default=melody.DEFAULTS["minutes"])
     m.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
     m.add_argument("--bpm", type=float, default=melody.DEFAULTS["bpm"])

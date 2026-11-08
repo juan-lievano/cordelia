@@ -69,7 +69,8 @@ everything before it is kept.
 The same drone, with 1, the asked degrees and 8 played up the octave over
 the tonic and fifth to set the key (a beat a step, the last held; no third,
 so the list alone says what the key is). Then each question is one melody
-of quarter notes, drawn at random within the recipe:
+of quarter notes, drawn at random within the recipe; with the default
+three hearings:
 
 ```
 beats 1-4     the melody
@@ -102,12 +103,13 @@ note under `data/voices/sung-<singer>/`.
 
 The recipe is given on the command line, as in the degrees mode: the
 degrees a melody may use (any of the twelve, `8` for the tonic above, and
-the same shorthands), `--length` for how many notes, and `--step` for the share
+the same shorthands), `--length` for how many notes, `--step` for the share
 of the moves that go to a neighbour in the list (the rest go anywhere else
-in it, a repeat included; the first note is uniform). Each defaults to the
-last melody session's. The three together are the exercise the stats group
+in it, a repeat included; the first note is uniform), and `--hearings` for
+how many times a melody is played before the answer. Each defaults to the
+last melody session's. The four together are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
-typed, and so is `--length 5` on a list already played. The two numbered
+typed, and so is `--length 5` or `--hearings 2` on a list already played. The two numbered
 levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the
 default above; level 1 was three degrees with every move equally likely,
 shown as "any move").
