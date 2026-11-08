@@ -84,7 +84,7 @@ SINGERS = {
 }
 SOTORRIO = ("do", "ga", "re", "nu", "mi", "fa", "jur", "so", "ki", "la", "pe", "ti")
 SYLLABLE = {"1": "do", "2": "re", "3": "mi", "4": "fa", "5": "so", "6": "la", "7": "ti", "8": "do",
-            "b3": "nu", "b6": "ki", "b7": "pe"}
+            "b2": "ga", "b3": "nu", "b5": "jur", "b6": "ki", "b7": "pe"}
 SOURCE_RATE = 44100
 MAX_SHIFT = 6                # semitones a sample is pitched by, at most: the nearest octave
 GATE = 0.01                  # of the peak: the leading silence is cut here

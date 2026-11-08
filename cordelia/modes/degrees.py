@@ -115,16 +115,17 @@ def keymap():
 LABELS = tuple(dict.fromkeys(keymap().values()))   # the order the stats list the degrees in
 
 
-def parse_degrees(words):
+def parse_degrees(words, table=SEMITONES):
     """Labels and shorthands from the command line -> the list of degrees, in
-    order up the octave and without repeats, or a SystemExit saying why not."""
+    order up the octave and without repeats, or a SystemExit saying why not.
+    `table` is the labels allowed, with their semitones."""
     labels = []
     for w in words:
         labels += SHORTHANDS.get(w.lower(), (w,))
-    bad = [l for l in labels if l not in SEMITONES]
+    bad = [l for l in labels if l not in table]
     if bad:
-        raise SystemExit(f"no such degree: {' '.join(bad)}. Use {' '.join(SEMITONES)}, or {', '.join(SHORTHANDS)}.")
-    return tuple(sorted(set(labels), key=SEMITONES.get))
+        raise SystemExit(f"no such degree: {' '.join(bad)}. Use {' '.join(table)}, or {', '.join(SHORTHANDS)}.")
+    return tuple(sorted(set(labels), key=table.get))
 
 
 def degrees_of(config):
@@ -247,15 +248,3 @@ def build_session(config, bank, rng=None):
     b.score.seconds = t + OUTRO_SECONDS
     return b.score, items, keymap()
 
-
-def build_review(config, metas, bank):
-    """The same phrase for each (degree, octave) in `metas`, nothing asked."""
-    b = Builder(config, bank)
-    t = INTRO_BEATS * b.beat
-    for m in metas:
-        label = m["degree"]
-        if isinstance(label, int):                       # an old session: a position in its scale
-            label = OLD_SCALES[config.get("scale", "major")][label - 1]
-        _, t = b.phrase(t, label, m["octave"])
-    b.score.seconds = t + OUTRO_SECONDS
-    return b.score

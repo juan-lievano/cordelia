@@ -10,7 +10,7 @@ import sys
 import tempfile
 import textwrap
 
-from . import journal, review, scorer, stats, store
+from . import journal, scorer, stats, store
 from .collector import collect
 from .modes import MODES, chords, degrees, melody
 from .synth import render
@@ -33,12 +33,15 @@ def main(argv=None):
     session_flags(d)
 
     m = sub.add_parser("melody", help="short melodies over a drone, sung back after each")
-    m.add_argument("level", type=int, nargs="?",
-                   help="; ".join(f"{n}: {spec['about']}" for n, spec in melody.LEVELS.items())
-                   + " (default: the last melody session's level)")
+    m.add_argument("degrees", nargs="*", metavar="DEGREE",
+                   help=f"the degrees a melody may use, from {' '.join(melody.DEGREES)}; "
+                        + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items())
+                        + " (default: the last melody session's list)")
+    m.add_argument("--notes", type=int, help="notes in a melody (default: the last session's)")
+    m.add_argument("--step", type=float,
+                   help="share of the moves that go to a neighbour in the list, 0-1 (default: the last session's)")
     m.add_argument("--minutes", type=float, default=melody.DEFAULTS["minutes"])
     m.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
-    m.add_argument("--scale", default=melody.DEFAULTS["scale"], help=" | ".join(melody.CADENCE))
     m.add_argument("--bpm", type=float, default=melody.DEFAULTS["bpm"])
     m.add_argument("--singer", default=melody.DEFAULTS["singer"], help=" | ".join(SINGERS))
     session_flags(m)
@@ -51,11 +54,6 @@ def main(argv=None):
     c.add_argument("--bpm", type=float, default=chords.DEFAULTS["bpm"])
     c.add_argument("--voice", default=chords.DEFAULTS["voice"], help="a `say -v ?` voice; default = system voice")
     session_flags(c)
-
-    r = sub.add_parser("review", help="replay what a session missed, each with its answer")
-    r.add_argument("session", nargs="?", type=int, help="session id (default: the last one)")
-    r.add_argument("--midi", metavar="FILE")
-    r.add_argument("--render", metavar="FILE", help="write the review WAV to FILE instead of playing it")
 
     s = sub.add_parser("stats", help="the last exercise played: a right%% histogram, degree and chord confusions")
     s.add_argument("--mode", default="all", help=" | ".join(MODES) + " | all (default: every mode in turn)")
@@ -73,8 +71,6 @@ def main(argv=None):
     a = p.parse_args(argv)
     if a.cmd in MODES:
         return cmd_session(MODES[a.cmd], a)
-    if a.cmd == "review":
-        return review.run(a.session, a.render, a.midi)
     if a.cmd == "stats":
         return stats.report(store.connect(), a.mode, a.degrees, a.key, a.tag)
     if a.cmd == "journal":
@@ -154,12 +150,11 @@ def cmd_session(mode, a):
         print("\r\x1b[K\n" + warning + stats.box(title, body) + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
         keystrokes, outcome, stopped_at = collect(
-            wav, ask_ms, status=lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap), config))
+            wav, ask_ms, status=lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap, config["keys"]), config))
         store.add_keystrokes(con, sid, keystrokes)
         store.replace_answers(con, sid, scorer.score(store.items(con, sid), keystrokes, keymap, config["keys"]))
         store.finish_session(con, sid, outcome, stopped_at)
-        print(f"saved session {sid} ({outcome}, {stopped_at / 60000:.0f} min).  "
-              f"cordelia review {sid} · cordelia stats")
+        print(f"saved session {sid} ({outcome}, {stopped_at / 60000:.0f} min).  cordelia stats")
     except BaseException:
         store.finish_session(con, sid, "aborted", None)
         raise

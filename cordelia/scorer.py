@@ -1,28 +1,30 @@
 """Match key presses to questions. A pure function of the key file and the
 presses, so it can be rerun over every old session when the rule changes.
 
-The presses that count are the last `keys` mapped ones inside the answer
-window, from the question's onset until the answer starts sounding;
-backspace takes the one before it back. One key is a degree (the same key
-twice, its flat), four a melody, joined by spaces either way. Presses between the window's end and
-the next question are recorded as late and never count.
+The presses that count are the mapped ones inside the answer window, from
+the question's onset until the answer starts sounding, read `keys` at a
+time: a press past the `keys`th starts the answer over, and backspace
+clears it. One key is a degree, four a melody, joined by spaces either
+way. Presses between the window's end and the next question are recorded
+as late and never count.
 """
 
 
-def typed(presses, keymap):
-    """The labels a run of key names spells, backspaces applied. A keymap
-    entry for two presses (`33`: b3) turns the label the first press made
-    into another; a keymap without such entries never sees the rule."""
+def typed(presses, keymap, keys=1):
+    """The labels a run of key names spells: at most `keys`, the next press
+    starting over, backspace clearing. A keymap entry for two presses
+    (`33`: b3, in sessions before 2026-11-07) turns the label the first
+    press made into another; a keymap without such entries never sees it."""
     out, prev = [], None
     for k in presses:
         if k == "backspace":
-            if out:
-                out.pop()
-            prev = None
+            out, prev = [], None
         elif prev is not None and out and prev + k in keymap:
             out[-1] = keymap[prev + k]
             prev = k
         elif k in keymap:
+            if len(out) >= keys:
+                out = []
             out.append(keymap[k])
             prev = k
         else:
@@ -36,11 +38,11 @@ def score(items, keystrokes, keymap, keys=1):
     for i, it in enumerate(items):
         nxt = items[i + 1]["ask_ms"] if i + 1 < len(items) else float("inf")
         inside = [(t, k) for t, k in presses if it["ask_ms"] <= t < it["window_end_ms"]]
-        labels = typed([k for _, k in inside], keymap)
+        labels = typed([k for _, k in inside], keymap, keys)
         mapped = [(t, k) for t, k in inside if k in keymap]
         late = sum(1 for t, k in presses if it["window_end_ms"] <= t < nxt and k in keymap)
         if labels:
-            answer = " ".join(labels[-keys:])
+            answer = " ".join(labels)
             correct = int(answer == it["truth"])
             latency = mapped[-1][0] - it["ask_ms"]
         else:

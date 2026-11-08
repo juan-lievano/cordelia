@@ -18,15 +18,13 @@ python3 -m cordelia degrees --voice Samantha       # any `say -v ?` voice
 python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag none clears
 python3 -m cordelia degrees --midi t.mid           # also write the score as MIDI
 python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
-python3 -m cordelia melody                         # 5 min, 55 BPM, the level last played (1 at first: four notes on 1 2 3), sung back
-python3 -m cordelia melody 2 --key G --singer chengu    # level 2
+python3 -m cordelia melody                         # 5 min, 55 BPM, the last melody recipe (at first: four notes on 1 to 5, half the moves stepwise), sung back
+python3 -m cordelia melody 1 2 b3 4 5 --notes 3 --step 0.7 --key G --singer chengu
 python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualities at the level last played (1 at first)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
-python3 -m cordelia review                         # replay the last session's misses, with answers
-python3 -m cordelia review 12 --render r.wav
 python3 -m cordelia stats                          # the last exercise played: histogram, trend, confusions
 python3 -m cordelia stats --degrees minor --tag headphones
-python3 -m cordelia stats --mode melody            # the last melody session's level
+python3 -m cordelia stats --mode melody            # the last melody session's recipe
 python3 -m cordelia journal                        # minutes practised, a cell per day, a column per week
 python3 -m cordelia rescore                        # rebuild answers from the raw presses
 python3 -m cordelia tags | data
@@ -68,9 +66,10 @@ everything before it is kept.
 
 ### The `melody` mode
 
-The same drone, with the major scale sung up to the octave over I, V, I,
-IV, I, IV, V, I to set the key (a beat a step, the last held). Then each
-question is one melody of quarter notes, drawn at random within its level:
+The same drone, with 1, the asked degrees and 8 played up the octave over
+the tonic and fifth to set the key (a beat a step, the last held; no third,
+so the list alone says what the key is). Then each question is one melody
+of quarter notes, drawn at random within the recipe:
 
 ```
 beats 1-4     the melody
@@ -85,10 +84,12 @@ beats 29-30   rest
 
 At the default 55 BPM a beat is 1.09 s (`--bpm` changes it).
 
-Type the degrees as you make them out, one key per note (1-8, or the home
-row for 1-7; 8 is the tonic above); backspace takes one back. The last
-four typed before the singing starts are the answer, stored as `1 2 3 1`,
-so a note can be right on its own in the stats. The singing comes from the
+Type the degrees as you make them out, one key per note (1-8, or
+h , . n e i l u; shifted for the flat, since a key twice is a repeated
+note here; 8 or u is the tonic above). A note
+past the last starts the answer over, backspace clears it, and what stands
+when the singing starts is the answer, stored as `1 2 b3 1`, so a note can
+be right on its own in the stats. The singing comes from the
 solfege samples in `solfege_samples/` (fixed-do, one syllable per
 semitone): each note is the singer's nearest sample of that syllable,
 pitched to the note by TD-PSOLA (`cordelia/psola.py`), which moves the
@@ -99,13 +100,17 @@ and the melody sits in the octave nearest middle C whatever the key.
 picks `jennifer` (default) or `chengu`; the sung clips are made once per
 note under `data/voices/sung-<singer>/`.
 
-Levels are rows of `LEVELS` in `cordelia/modes/melody.py`: which degrees a
-melody may use, how many notes, how far it may leap, and what share of the
-moves go to an adjacent degree (the rest go anywhere else allowed, a repeat
-included; the first note is uniform). Level 1 is four notes on 1 2 3, any
-move. Level 2 is 1 to 5 with half the moves stepwise (`cordelia melody 2`). A new
-level is a new row; the session records its level with every question,
-and the stats read across levels.
+The recipe is given on the command line, as in the degrees mode: the
+degrees a melody may use (any of the twelve, `8` for the tonic above, and
+the same shorthands), `--notes` for how many, and `--step` for the share
+of the moves that go to a neighbour in the list (the rest go anywhere else
+in it, a repeat included; the first note is uniform). Each defaults to the
+last melody session's. The three together are the exercise the stats group
+by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
+typed, and so is `--notes 5` on a list already played. The two numbered
+levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the
+default above; level 1 was three degrees with every move equally likely,
+shown as "any move").
 
 ### The `chords` mode
 
@@ -157,7 +162,7 @@ without losing anything. Timing caveat: `afplay` starts some tens of ms
 after it is spawned, so every latency carries the same small offset; fine
 for comparing degrees, not for absolute numbers.
 
-### Stats and review
+### Stats
 
 `stats` reports the exercise of the last session played: a histogram of
 right% over its questions in the order they were asked, the trend with its
@@ -165,11 +170,10 @@ standard error, and for degrees and chords the confusion matrix and the
 recall and precision of each answer over the latest 500 questions.
 `--mode`, `--degrees`, `--key` and `--tag` pick a different last session,
 so that harder settings don't read as regression. An exercise is its mode
-and its content (the degree list, the level), and no table mixes two.
-`journal` is the practice wall: a column per week, a cell per weekday,
-shaded by the minutes practised that day across every mode. `review`
-replays the questions a session got wrong or left unanswered, each as it
-sounded, answer included, and says only how long it is.
+and its content (the degree list, the melody recipe, the chords level), and
+no table mixes two. `journal` is the practice wall: a column per week, a
+cell per weekday, shaded by the minutes practised that day across every
+mode.
 
 ### Adding a mode
 
@@ -179,9 +183,9 @@ keymap (key name → label), `configure` (flags → config, with `keys`: how
 many presses make an answer), `bank` (the voice it answers with), `hint`
 and `status` (the two lines the terminal shows), `describe`, `exercise`
 (what the stats group sessions by) and `LABELS` (the order of its confusion
-matrix; leave it out for a mode without one), and `build_review`; `cordelia/modes/melody.py` is the second one, with its
-stats section in `cordelia/stats.py`, and `cordelia/modes/chords.py` the
-third, the first without a drone. Everything else — rendering,
+matrix; leave it out for a mode without one); `cordelia/modes/melody.py`
+is the second one, and `cordelia/modes/chords.py` the third, the first
+without a drone. Everything else — rendering,
 collecting, scoring, storage — is shared. The synth is a package with one
 file per voice (`tone`, `chord`, `click`, `drone`) and the mixer in
 `synth/mix.py`; a `Note` names its voice, and a new timbre is a new file

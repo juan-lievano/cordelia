@@ -222,12 +222,3 @@ def build_session(config, bank, rng=None):
     b.score.seconds = t + OUTRO_SECONDS
     return b.score, items, keymap(level)
 
-
-def build_review(config, metas, bank):
-    """The same phrase for each chord in `metas`, nothing asked."""
-    b = Builder(config, bank)
-    t = INTRO_BEATS * b.beat
-    for m in metas:
-        _, t = b.phrase(t, m["root_midi"], m["quality"])
-    b.score.seconds = t + OUTRO_SECONDS
-    return b.score

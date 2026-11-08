@@ -1,38 +1,38 @@
 """Short melodies over a drone, sung back by a voice.
 
-The session opens with the major scale up to the octave, each step over a
-chord, so the key is set before anything is asked. Each question is one
-melody of a few quarter notes, played three times with a bar of clicks
-between, then a bar of clicks to think, then sung back in solfege on its
-own pitches. You type the degrees, one key per note; the last ones typed
-before the singing starts are the answer.
+The session opens with the asked degrees sung up to the octave over the
+tonic and fifth, so the key is set before anything is asked. Each question
+is one melody of a few quarter notes, played three times with a bar of
+clicks between, then a bar of clicks to think, then sung back in solfege on
+its own pitches. You type the degrees, one key per note; a note past the
+last starts the answer over, backspace clears it, and what stands when the
+singing starts is the answer.
 
-The levels are a table: which degrees a melody may use (1-8, 8 the tonic
-above), how many notes, how far it may leap, and what share of the moves
-go to an adjacent degree. A new level is a new row and nothing else, and
-every level's answers are stored the same way (the degrees as a
-space-separated string), so the stats read across them.
+The exercise is described on the command line, as in the degrees mode:
+which degrees a melody may use (any of the twelve, and 8 for the tonic
+above), how many notes, and what share of the moves go to a neighbour in
+the list. There is no level table; the three together are the exercise,
+and every answer is stored the same way (the degrees as a space-separated
+string), so the stats read across them.
 """
 
 import random
 
 from ..score import Clip, Note, Score
 from ..voice import SungBank, sung_label
-from .degrees import HOME_ROW, NOTE_NAMES, parse_key, random_key, tonic_midi  # noqa: F401
+from .degrees import HOME_ROW, NOTE_NAMES, SEMITONES, parse_degrees, parse_key, random_key, tonic_midi
 
 NAME = "melody"
 
-# degrees: what a melody may use; notes: how many; max_leap: the widest move
-# in scale steps (None: any); step_share: the chance each move goes to the
-# degree just above or below (None: every degree equally likely), the rest
-# of the moves going to any other allowed degree, a repeat included. The
-# first note is uniform over the degrees.
-LEVELS = {
-    1: dict(degrees=(1, 2, 3), notes=4, max_leap=None, step_share=None,
-            about="four quarter notes on 1 2 3"),
-    2: dict(degrees=(1, 2, 3, 4, 5), notes=4, max_leap=None, step_share=0.5,
-            about="four quarter notes on 1 to 5, half the moves stepwise"),
-}
+# The twelve degrees and the tonic above, with their semitones above the tonic.
+DEGREES = dict(SEMITONES, **{"8": 12})
+
+# degrees: what a melody may use; notes: how many; step: the chance each
+# move goes to the degree just above or below in the list, the rest of the
+# moves going to any other degree in it, a repeat included. The first note
+# is uniform over the degrees.
+DEFAULTS = dict(minutes=5.0, key=None, bpm=55.0, degrees=("1", "2", "3", "4", "5"), notes=4, step=0.5,
+                singer="jennifer")
 
 # A question, in beats: the melody, a bar of clicks, the melody, clicks,
 # the melody, a bar of clicks to think, then the answer sung a note a beat,
@@ -51,47 +51,45 @@ SUNG_LEVEL = 1.3
 SUNG_OVERLAP = 0.06            # a sung note holds this far past the next one's vowel
 SUNG_RING = 1.5                # the last sung note rings this long at most
 
-# The cadence: the scale 1-8 a beat each, each step over a chord, the last
-# held. Chords are (degree, octave) relative to the melody register.
-CHORDS = {
-    "I": ((1, -1), (3, -1), (5, -1)),
-    "IV": ((4, -1), (6, -1), (1, 0)),
-    "V": ((5, -1), (7, -1), (2, 0)),
-}
-SCALES = {
-    "major": dict(steps=(0, 2, 4, 5, 7, 9, 11), labels=("1", "2", "3", "4", "5", "6", "7")),
-}
-SCALE_ALIASES = {"ionian": "major"}
-
-
-def parse_scale(text):
-    name = text.strip().lower().replace("_", "-").replace(" ", "-")
-    name = SCALE_ALIASES.get(name, name)
-    return name if name in SCALES else None
-
-
-CADENCE = {"major": ("I", "V", "I", "IV", "I", "IV", "V", "I")}
+# The cadence: 1, the asked degrees and 8, a beat each, the last held, over
+# the tonic and fifth an octave down. No third, so the list says what the key
+# is and nothing else does.
 CADENCE_LAST_BEATS = 2
+CADENCE_BASS = (("1", -1), ("5", -1))
 
-DEFAULTS = dict(minutes=5.0, key=None, scale="major", bpm=55.0, level=1, singer="jennifer")
+
+# A melody has repeats, so a key twice must stay two notes: the flat is the
+# home-row key shifted instead (> is b3), and 8 is the next key along.
+FLAT_ROW = "H<>NEIL"
+OCTAVE_KEY = "u"
 
 
-def keymap(scale):
-    """1-8 (and the home row for 1-7) to scale-degree labels; 8 is the tonic above."""
-    labels = SCALES[scale]["labels"] + ("8",)
-    km = {str(d): labels[d - 1] for d in range(1, 9)}
-    km.update({HOME_ROW[d - 1]: labels[d - 1] for d in range(1, 8)})
+def keymap():
+    """Digits and home-row keys name the naturals, the shifted home-row key
+    the flat under it, and 8 or the next home-row key the tonic above."""
+    km = {}
+    for d in range(1, 8):
+        km[str(d)] = km[HOME_ROW[d - 1]] = str(d)
+        if f"b{d}" in SEMITONES:
+            km[FLAT_ROW[d - 1]] = f"b{d}"
+    km["8"] = km[OCTAVE_KEY] = "8"
     return km
 
 
+def recipe(config):
+    """The three things that make the exercise, as words. The first melody
+    session (2026-11-03) drew every move uniformly and has no step share."""
+    step = config["step"]
+    return (" ".join(config["degrees"]), f"{config['notes']} notes", "any move" if step is None else f"step {step:g}")
+
+
 def exercise(config):
-    """What the session drilled, after the mode name in the stats: its level."""
-    return (str(config["level"]),)
+    """What the session drilled, after the mode name in the stats."""
+    return recipe(config)
 
 
 def describe(config):
-    return (f"level {config['level']}, {NOTE_NAMES[parse_key(config['key'])]} "
-            f"{config['scale'].replace('-', ' ')}, {config['bpm']:g} BPM")
+    return f"{NOTE_NAMES[parse_key(config['key'])]}, {', '.join(recipe(config))}, {config['bpm']:g} BPM"
 
 
 class Builder:
@@ -99,22 +97,14 @@ class Builder:
         self.config = config
         self.bank = bank
         self.beat = 60.0 / config["bpm"]
-        self.scale = SCALES[config["scale"]]
         self.pc = parse_key(config["key"])
         self.score = Score(drone={"midi": 36 + self.pc}, voice=bank.name)
 
     def midi(self, degree, octave=0):
-        steps = self.scale["steps"]
-        return tonic_midi(self.pc) + steps[(degree - 1) % 7] + 12 * (octave + (degree - 1) // 7)
-
-    def label(self, degree):
-        return "8" if degree == 8 else self.scale["labels"][degree - 1]
-
-    def labels(self, degrees):
-        return " ".join(self.label(d) for d in degrees)
+        return tonic_midi(self.pc) + DEGREES[degree] + 12 * octave
 
     def sung(self, degree):
-        return sung_label(self.label(degree), self.midi(degree))
+        return sung_label(degree, self.midi(degree))
 
     def melody(self, t, degrees):
         """The notes a beat each from t. Returns next_t."""
@@ -153,41 +143,38 @@ class Builder:
         return window_end, t + REST_BEATS * self.beat
 
     def cadence(self, t):
-        """The scale up to the octave over I, V, I, IV..., starting at t. Returns next_t."""
-        chords = CADENCE[self.config["scale"]]
-        for step, chord in enumerate(chords, 1):
-            beats = CADENCE_LAST_BEATS if step == len(chords) else 1
-            top = self.midi(step)
-            self.score.notes.append(Note(t, beats * self.beat + RING, top))
-            for degree, octave in CHORDS[chord]:
-                midi = self.midi(degree, octave)
-                if midi != top:
-                    self.score.notes.append(Note(t, beats * self.beat + RING, midi, CHORD_LEVEL))
-            t += beats * self.beat
+        """1, the asked degrees and 8 up the octave, a beat each, the last held,
+        over the tonic and fifth, starting at t. Returns next_t."""
+        steps = list(dict.fromkeys(["1", *self.config["degrees"], "8"]))
+        beats = len(steps) - 1 + CADENCE_LAST_BEATS
+        for degree, octave in CADENCE_BASS:
+            self.score.notes.append(Note(t, beats * self.beat + RING, self.midi(degree, octave), CHORD_LEVEL))
+        for i, degree in enumerate(steps):
+            held = CADENCE_LAST_BEATS if i == len(steps) - 1 else 1
+            self.score.notes.append(Note(t, held * self.beat + RING, self.midi(degree)))
+            t += held * self.beat
         return t + CADENCE_REST_BEATS * self.beat
 
     def phrase_beats(self, notes):
         return HEARINGS * notes + (HEARINGS - 1) * CLICK_BEATS + ANSWER_CLICK_BEATS + notes + REST_BEATS
 
 
-def next_note(rng, spec, last):
-    allowed = [d for d in spec["degrees"] if spec["max_leap"] is None or abs(d - last) <= spec["max_leap"]]
-    steps = [d for d in allowed if abs(d - last) == 1]
-    share = spec["step_share"]
-    if share is not None and steps and rng.random() < share:
+def next_note(rng, config, last):
+    degrees = config["degrees"]
+    i = degrees.index(last)
+    steps = [degrees[j] for j in (i - 1, i + 1) if 0 <= j < len(degrees)]
+    if steps and rng.random() < config["step"]:
         return rng.choice(steps)
-    others = [d for d in allowed if d not in steps] if share is not None else allowed
-    return rng.choice(others or allowed)
+    return rng.choice([d for d in degrees if d not in steps] or steps)
 
 
-def draw(rng, level, count):
-    """`count` melodies for the level, never the same one twice in a row."""
-    spec = LEVELS[level]
+def draw(rng, config, count):
+    """`count` melodies for the config, never the same one twice in a row."""
     out, previous = [], None
     while len(out) < count:
-        melody = [rng.choice(spec["degrees"])]
-        while len(melody) < spec["notes"]:
-            melody.append(next_note(rng, spec, melody[-1]))
+        melody = [rng.choice(config["degrees"])]
+        while len(melody) < config["notes"]:
+            melody.append(next_note(rng, config, melody[-1]))
         if melody != previous:
             out.append(melody)
             previous = melody
@@ -197,7 +184,7 @@ def draw(rng, level, count):
 def sung_labels(config):
     """Every sung clip a session at this config could need."""
     b = Builder(config, _NoBank())
-    return [b.sung(d) for d in range(1, 9)]
+    return [b.sung(d) for d in config["degrees"]]
 
 
 class _NoBank:
@@ -216,27 +203,29 @@ def configure(a, last_config, rng):
     pc = parse_key(a.key or random_key(rng, last_config and last_config.get("key")))
     if pc is None:
         raise SystemExit(f"--key {a.key!r} is not a note name")
-    scale = parse_scale(a.scale)
-    if scale not in CADENCE:
-        raise SystemExit(f"--scale {a.scale!r}: melody mode has a cadence for {', '.join(CADENCE)} only")
-    level = a.level if a.level is not None else (last_config or {}).get("level", DEFAULTS["level"])
-    if level not in LEVELS:
-        raise SystemExit(f"level {level}: choose from {', '.join(map(str, LEVELS))}")
+    last = last_config or DEFAULTS
+    degrees = parse_degrees(a.degrees, DEGREES) if a.degrees else tuple(last["degrees"])
+    notes = a.notes if a.notes is not None else last["notes"]
+    step = a.step if a.step is not None else last["step"]
+    if notes < 1:
+        raise SystemExit("--notes must be at least 1")
+    if not 0 <= step <= 1:
+        raise SystemExit("--step is a share, 0 to 1")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], scale=scale, bpm=a.bpm, level=level,
-                singer=a.singer, keys=LEVELS[level]["notes"])
+    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), notes=notes, step=step,
+                singer=a.singer, keys=notes)
 
 
 def hint(config, width):
-    spec = LEVELS[config["level"]]
-    return (f"{spec['about']}. Type the {spec['notes']} degrees (1-8, or {HOME_ROW} for 1-7), "
-            "backspace corrects; the last ones typed before the singing count.")
+    return (f"{config['notes']} notes on {' '.join(config['degrees'])}, step {config['step']:g}. "
+            f"Keys 1-8 (or {HOME_ROW}{OCTAVE_KEY}), shifted ({FLAT_ROW}) for the flat (> = b3); "
+            "a note past the last starts over, backspace clears.")
 
 
 def status(current, n, typed, config):
     slots = ["_"] * config["keys"]
-    for i, k in enumerate(typed[-config["keys"]:]):
+    for i, k in enumerate(typed):
         slots[i] = k
     return f"question {current}/{n}   [{' '.join(slots)}]"
 
@@ -245,26 +234,15 @@ def build_session(config, bank, rng=None):
     """Score + key items for a fresh session of config['minutes']."""
     rng = rng or random.Random()
     b = Builder(config, bank)
-    level = config["level"]
     limit = config["minutes"] * 60
     t = b.cadence(INTRO_BEATS * b.beat)
-    count = max(1, int((limit - t) // (b.phrase_beats(LEVELS[level]["notes"]) * b.beat)))
+    count = max(1, int((limit - t) // (b.phrase_beats(config["notes"]) * b.beat)))
     items = []
-    for idx, degrees in enumerate(draw(rng, level, count)):
+    for idx, degrees in enumerate(draw(rng, config, count)):
         window_end, nxt = b.phrase(t, degrees)
-        items.append(dict(idx=idx, truth=b.labels(degrees), ask_s=t, window_end_s=window_end,
-                          meta=dict(level=level, degrees=degrees, midis=[b.midi(d) for d in degrees])))
+        items.append(dict(idx=idx, truth=" ".join(degrees), ask_s=t, window_end_s=window_end,
+                          meta=dict(degrees=degrees, midis=[b.midi(d) for d in degrees])))
         t = nxt
     b.score.seconds = t + OUTRO_SECONDS
-    return b.score, items, keymap(config["scale"])
+    return b.score, items, keymap()
 
-
-def build_review(config, metas, bank):
-    """Each melody once, then sung, nothing asked."""
-    b = Builder(config, bank)
-    t = INTRO_BEATS * b.beat
-    for m in metas:
-        t = b.melody(t, m["degrees"]) + b.beat
-        t = b.sing(t, m["degrees"]) + REST_BEATS * b.beat
-    b.score.seconds = t + OUTRO_SECONDS
-    return b.score
