@@ -159,7 +159,7 @@ def cmd_session(mode, a):
         store.add_keystrokes(con, sid, keystrokes)
         store.replace_answers(con, sid, scorer.score(store.items(con, sid), keystrokes, keymap, config["keys"]))
         store.finish_session(con, sid, outcome, stopped_at)
-        print(f"saved session {sid} ({outcome}, {stopped_at / 60000:.0f} min).  cordelia stats")
+        print(f"saved session {sid} ({outcome}, {stopped_at / 60000:.0f} min)")
     except BaseException:
         store.finish_session(con, sid, "aborted", None)
         raise
