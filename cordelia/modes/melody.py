@@ -27,11 +27,11 @@ NAME = "melody"
 # The twelve degrees and the tonic above, with their semitones above the tonic.
 DEGREES = dict(SEMITONES, **{"8": 12})
 
-# degrees: what a melody may use; notes: how many; step: the chance each
+# degrees: what a melody may use; length: how many notes; step: the chance each
 # move goes to the degree just above or below in the list, the rest of the
 # moves going to any other degree in it, a repeat included. The first note
 # is uniform over the degrees.
-DEFAULTS = dict(minutes=5.0, key=None, bpm=55.0, degrees=("1", "2", "3", "4", "5"), notes=4, step=0.5,
+DEFAULTS = dict(minutes=5.0, key=None, bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, step=0.5,
                 singer="jennifer")
 
 # A question, in beats: the melody, a bar of clicks, the melody, clicks,
@@ -80,7 +80,7 @@ def recipe(config):
     """The three things that make the exercise, as words. The first melody
     session (2026-11-03) drew every move uniformly and has no step share."""
     step = config["step"]
-    return (" ".join(config["degrees"]), f"{config['notes']} notes", "any move" if step is None else f"step {step:g}")
+    return (" ".join(config["degrees"]), f"{config['length']} notes", "any move" if step is None else f"step {step:g}")
 
 
 def exercise(config):
@@ -173,7 +173,7 @@ def draw(rng, config, count):
     out, previous = [], None
     while len(out) < count:
         melody = [rng.choice(config["degrees"])]
-        while len(melody) < config["notes"]:
+        while len(melody) < config["length"]:
             melody.append(next_note(rng, config, melody[-1]))
         if melody != previous:
             out.append(melody)
@@ -205,20 +205,20 @@ def configure(a, last_config, rng):
         raise SystemExit(f"--key {a.key!r} is not a note name")
     last = last_config or DEFAULTS
     degrees = parse_degrees(a.degrees, DEGREES) if a.degrees else tuple(last["degrees"])
-    notes = a.notes if a.notes is not None else last["notes"]
+    length = a.length if a.length is not None else last["length"]
     step = a.step if a.step is not None else last["step"]
-    if notes < 1:
-        raise SystemExit("--notes must be at least 1")
+    if length < 1:
+        raise SystemExit("--length must be at least 1")
     if not 0 <= step <= 1:
         raise SystemExit("--step is a share, 0 to 1")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), notes=notes, step=step,
-                singer=a.singer, keys=notes)
+    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), length=length, step=step,
+                singer=a.singer, keys=length)
 
 
 def hint(config, width):
-    return (f"{config['notes']} notes on {' '.join(config['degrees'])}, step {config['step']:g}. "
+    return (f"{config['length']} notes on {' '.join(config['degrees'])}, step {config['step']:g}. "
             f"Keys 1-8 (or {HOME_ROW}{OCTAVE_KEY}), shifted ({FLAT_ROW}) for the flat (> = b3); "
             "a note past the last starts over, backspace clears.")
 
@@ -236,7 +236,7 @@ def build_session(config, bank, rng=None):
     b = Builder(config, bank)
     limit = config["minutes"] * 60
     t = b.cadence(INTRO_BEATS * b.beat)
-    count = max(1, int((limit - t) // (b.phrase_beats(config["notes"]) * b.beat)))
+    count = max(1, int((limit - t) // (b.phrase_beats(config["length"]) * b.beat)))
     items = []
     for idx, degrees in enumerate(draw(rng, config, count)):
         window_end, nxt = b.phrase(t, degrees)

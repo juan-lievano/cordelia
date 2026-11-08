@@ -37,7 +37,7 @@ def main(argv=None):
                    help=f"the degrees a melody may use, from {' '.join(melody.DEGREES)}; "
                         + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items())
                         + " (default: the last melody session's list)")
-    m.add_argument("--notes", type=int, help="notes in a melody (default: the last session's)")
+    m.add_argument("--length", type=int, help="notes in a melody (default: the last session's)")
     m.add_argument("--step", type=float,
                    help="share of the moves that go to a neighbour in the list, 0-1 (default: the last session's)")
     m.add_argument("--minutes", type=float, default=melody.DEFAULTS["minutes"])

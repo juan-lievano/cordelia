@@ -19,7 +19,7 @@ python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag 
 python3 -m cordelia degrees --midi t.mid           # also write the score as MIDI
 python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
 python3 -m cordelia melody                         # 5 min, 55 BPM, the last melody recipe (at first: four notes on 1 to 5, half the moves stepwise), sung back
-python3 -m cordelia melody 1 2 b3 4 5 --notes 3 --step 0.7 --key G --singer chengu
+python3 -m cordelia melody 1 2 b3 4 5 --length 3 --step 0.7 --key G --singer chengu
 python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualities at the level last played (1 at first)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
 python3 -m cordelia stats                          # the last exercise played: histogram, trend, confusions
@@ -102,12 +102,12 @@ note under `data/voices/sung-<singer>/`.
 
 The recipe is given on the command line, as in the degrees mode: the
 degrees a melody may use (any of the twelve, `8` for the tonic above, and
-the same shorthands), `--notes` for how many, and `--step` for the share
+the same shorthands), `--length` for how many notes, and `--step` for the share
 of the moves that go to a neighbour in the list (the rest go anywhere else
 in it, a repeat included; the first note is uniform). Each defaults to the
 last melody session's. The three together are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
-typed, and so is `--notes 5` on a list already played. The two numbered
+typed, and so is `--length 5` on a list already played. The two numbered
 levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the
 default above; level 1 was three degrees with every move equally likely,
 shown as "any move").
