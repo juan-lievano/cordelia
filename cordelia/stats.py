@@ -50,11 +50,12 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
 
 
 def exercise(mode, cfg):
-    """What is being drilled: the mode, then what its module says (the degree
-    list, the level). A mode this version no longer has falls back to its level."""
+    """What is being drilled: the mode and what its module says (the degree
+    list, the level; for melody the list, then the rest of the recipe after a
+    dot). A mode this version no longer has falls back to its level."""
     m = MODES.get(mode)
     parts = m.exercise(cfg) if m else ([str(cfg["level"])] if cfg.get("level") is not None else [])
-    return " ".join([mode, *parts])
+    return " · ".join([" ".join([mode, *parts[:1]]), *parts[1:]])
 
 
 def table(headers, rows, dividers=(0,)):
@@ -78,13 +79,13 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
     ex = rows[-1]["exercise"]
     ex_rows = [r for r in rows if r["exercise"] == ex]
     n = len(ex_rows)
-    per_bar = "a bar per question" if n <= BARS else f"each bar the mean of ~{n / BARS:.0f}"
+    per_bar = "a bar per q" if n <= BARS else f"each bar the mean of ~{n / BARS:.0f}"
     right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
-    title = f"{ex} · {n} questions · {right:.0f}% right · {per_bar}"
+    title = f"{ex} · {n} q · {right:.0f}% right · {per_bar}"
     trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
     if trend is not None:
         b, se = trend
-        title += f" · trend {100 * b:+.1f} ± {100 * se:.1f} pp / 100 questions"
+        title += f" · trend {100 * b:+.1f} ± {100 * se:.1f} pp / 100 q"
     hist = box(title, histogram(ex_rows))
     blocks = [hist]
     if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense

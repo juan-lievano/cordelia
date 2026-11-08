@@ -137,7 +137,7 @@ def degrees_of(config):
 
 def exercise(config):
     """What the session drilled, after the mode name in the stats: its degree list."""
-    return degrees_of(config)
+    return (" ".join(degrees_of(config)),)
 
 
 def spoken(degrees):

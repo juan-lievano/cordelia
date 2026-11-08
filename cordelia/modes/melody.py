@@ -77,14 +77,14 @@ def keymap():
 
 
 def recipe(config):
-    """The four things that make the exercise, as words. Sessions before
+    """The exercise as words: the list, then the rest. Sessions before
     2026-11-08 had `step`, the share of moves to a neighbour, the rest uniform
     with repeats; the first (2026-11-03) drew every move uniformly."""
     if "spread" in config:
         moves = f"spread {config['spread']:g}"
     else:
         moves = "any move" if config["step"] is None else f"step {config['step']:g}"
-    return (" ".join(config["degrees"]), f"{config['length']} notes", moves, f"heard {config['hearings']}x")
+    return (" ".join(config["degrees"]), f"{config['length']} notes, {moves}, heard {config['hearings']}x")
 
 
 def exercise(config):
