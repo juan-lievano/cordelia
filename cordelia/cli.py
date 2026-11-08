@@ -45,7 +45,7 @@ def main(argv=None):
     m.add_argument("--hearings", type=int, help="times a melody is played before the answer (default: the last session's)")
     m.add_argument("--minutes", type=float, default=melody.DEFAULTS["minutes"])
     m.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
-    m.add_argument("--bpm", type=float, default=melody.DEFAULTS["bpm"])
+    m.add_argument("--bpm", type=float, help="(default: the last session's)")
     m.add_argument("--singer", default=melody.DEFAULTS["singer"], help=" | ".join(SINGERS))
     session_flags(m)
 
@@ -119,9 +119,9 @@ def tags(con, flag=None):
 def cmd_session(mode, a):
     con = store.connect()
     last = store.session(con, store.last_session_id(con, mode.NAME) or 0)
-    if not degrees.MIN_BPM <= a.bpm <= degrees.MAX_BPM:
-        raise SystemExit(f"--bpm must be between {degrees.MIN_BPM} and {degrees.MAX_BPM}")
     config = mode.configure(a, last and last["config"], random.Random(a.seed))
+    if not degrees.MIN_BPM <= config["bpm"] <= degrees.MAX_BPM:
+        raise SystemExit(f"--bpm must be between {degrees.MIN_BPM} and {degrees.MAX_BPM}")
     bank = mode.bank(config, store.data_dir())
     score, items, keymap = mode.build_session(config, bank, random.Random(a.seed))
     config["keymap"] = keymap
@@ -146,7 +146,7 @@ def cmd_session(mode, a):
     try:
         render(score, wav, bank, progress)
         store.add_items(con, sid, items)
-        title = (f"session {sid} · {mode.describe(config)} · {len(items)} questions, "
+        title = (f"session {sid} · {mode.describe(config)} · {len(items)} q, "
                  f"{score.seconds / 60:.0f} min" + (f" · tags: {', '.join(tg)}" if tg else ""))
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         body = "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
@@ -184,7 +184,7 @@ def ambient(a, mode, config, score, items, bank):
         wav = os.path.join(tmpdir, "session.wav")
     try:
         render(score, wav, bank, progress)
-        title = f"ambient · {mode.describe(config)} · {len(items)} questions, {score.seconds / 60:.0f} min · not recorded"
+        title = f"ambient · {mode.describe(config)} · {len(items)} q, {score.seconds / 60:.0f} min · not recorded"
         print("\r\x1b[K\n" + stats.box(title, "Esc stops.") + "\n")
         collect(wav, [round(it["ask_s"] * 1000) for it in items])
     finally:
