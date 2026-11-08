@@ -68,7 +68,9 @@ def main(argv=None):
 
     if not (sys.argv[1:] if argv is None else argv):
         return p.print_help()
-    a = p.parse_args(argv)
+    a, extra = p.parse_known_args(argv)
+    if extra:       # argparse would blame the top-level usage; the subcommand's is the useful one
+        sub.choices[a.cmd].error(f"unrecognized arguments: {' '.join(extra)}  (--help lists the flags)")
     if a.cmd in MODES:
         return cmd_session(MODES[a.cmd], a)
     if a.cmd == "stats":
