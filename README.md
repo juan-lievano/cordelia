@@ -74,14 +74,17 @@ three hearings:
 
 ```
 beats 1-4     the melody
-beats 5-8     a click a beat
-beats 9-12    the melody again
-beats 13-16   clicks
-beats 17-20   the melody once more
-beats 21-24   clicks, to think
-beats 25-28   the answer, sung a note a beat   — "do re mi do", on the melody's own pitches
-beats 29-30   rest
+beats 5-6     a click a beat
+beats 7-10    the melody again
+beats 11-12   clicks
+beats 13-16   the melody once more
+beats 17-20   clicks, to think
+beats 21-24   the answer, sung a note a beat   — "do re mi do", on the melody's own pitches
+beats 25-26   rest
 ```
+
+Sessions before 2026-11-08 had four clicks between hearings; the commit
+stored with each session tells which.
 
 At the default 55 BPM a beat is 1.09 s (`--bpm` changes it).
 

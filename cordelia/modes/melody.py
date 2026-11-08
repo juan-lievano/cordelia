@@ -35,10 +35,10 @@ DEGREES = dict(SEMITONES, **{"8": 12})
 DEFAULTS = dict(minutes=5.0, key=None, bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, step=0.5,
                 hearings=3, singer="jennifer")
 
-# A question, in beats: the melody, then a bar of clicks and the melody
-# again for each further hearing, a bar of clicks to think, the answer sung
-# a note a beat, and a rest.
-CLICK_BEATS = 4
+# A question, in beats: the melody, then two clicks and the melody again
+# for each further hearing, a bar of clicks to think, the answer sung a
+# note a beat, and a rest.
+CLICK_BEATS = 2                # between hearings; since 2026-11-08, 4 before
 ANSWER_CLICK_BEATS = 4         # between the last hearing and the answer
 REST_BEATS = 2
 INTRO_BEATS = 1                # the drone's fade-in, then the cadence, then the questions
