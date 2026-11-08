@@ -38,8 +38,10 @@ def main(argv=None):
                         + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items())
                         + " (default: the last melody session's list)")
     m.add_argument("--length", type=int, help="notes in a melody (default: the last session's)")
-    m.add_argument("--step", type=float,
-                   help="share of the moves that go to a neighbour in the list, 0-1 (default: the last session's)")
+    m.add_argument("--spread", type=float,
+                   help="how far a move tends to go: a move of d positions along the list weighs spread^(d-1), "
+                        "so 0 is steps only, 1 any other degree equally, 0.2 mostly steps with the odd third "
+                        "(default: the last session's)")
     m.add_argument("--hearings", type=int, help="times a melody is played before the answer (default: the last session's)")
     m.add_argument("--minutes", type=float, default=melody.DEFAULTS["minutes"])
     m.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")

@@ -10,10 +10,10 @@ singing starts is the answer.
 
 The exercise is described on the command line, as in the degrees mode:
 which degrees a melody may use (any of the twelve, and 8 for the tonic
-above), how many notes, and what share of the moves go to a neighbour in
-the list. There is no level table; the three together are the exercise,
-and every answer is stored the same way (the degrees as a space-separated
-string), so the stats read across them.
+above), how many notes, how far a move tends to go, and how many times a
+melody is played. There is no level table; the four together are the
+exercise, and every answer is stored the same way (the degrees as a
+space-separated string), so the stats read across them.
 """
 
 import random
@@ -27,12 +27,12 @@ NAME = "melody"
 # The twelve degrees and the tonic above, with their semitones above the tonic.
 DEGREES = dict(SEMITONES, **{"8": 12})
 
-# degrees: what a melody may use; length: how many notes; step: the chance each
-# move goes to the degree just above or below in the list, the rest of the
-# moves going to any other degree in it, a repeat included (the first note
-# is uniform over the degrees); hearings: how many times a melody is played
-# before the answer.
-DEFAULTS = dict(minutes=5.0, key=None, bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, step=0.5,
+# degrees: what a melody may use; length: how many notes; spread: how far a
+# move tends to go, the weight of a move of d positions along the list being
+# spread ** (d - 1), so 0 is steps only and 1 is uniform over the other
+# degrees (never the same degree twice running; the first note is uniform);
+# hearings: how many times a melody is played before the answer.
+DEFAULTS = dict(minutes=5.0, key=None, bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, spread=0.2,
                 hearings=3, singer="jennifer")
 
 # A question, in beats: the melody, then two clicks and the melody again
@@ -77,11 +77,14 @@ def keymap():
 
 
 def recipe(config):
-    """The three things that make the exercise, as words. The first melody
-    session (2026-11-03) drew every move uniformly and has no step share."""
-    step = config["step"]
-    return (" ".join(config["degrees"]), f"{config['length']} notes", "any move" if step is None else f"step {step:g}",
-            f"heard {config['hearings']}x")
+    """The four things that make the exercise, as words. Sessions before
+    2026-11-08 had `step`, the share of moves to a neighbour, the rest uniform
+    with repeats; the first (2026-11-03) drew every move uniformly."""
+    if "spread" in config:
+        moves = f"spread {config['spread']:g}"
+    else:
+        moves = "any move" if config["step"] is None else f"step {config['step']:g}"
+    return (" ".join(config["degrees"]), f"{config['length']} notes", moves, f"heard {config['hearings']}x")
 
 
 def exercise(config):
@@ -162,12 +165,11 @@ class Builder:
 
 
 def next_note(rng, config, last):
+    """Any other degree in the list, weighted spread ** (positions away - 1)."""
     degrees = config["degrees"]
     i = degrees.index(last)
-    steps = [degrees[j] for j in (i - 1, i + 1) if 0 <= j < len(degrees)]
-    if steps and rng.random() < config["step"]:
-        return rng.choice(steps)
-    return rng.choice([d for d in degrees if d not in steps] or steps)
+    others = [(d, abs(j - i)) for j, d in enumerate(degrees) if j != i]
+    return rng.choices([d for d, _ in others], [config["spread"] ** (away - 1) for _, away in others])[0]
 
 
 def draw(rng, config, count):
@@ -208,22 +210,24 @@ def configure(a, last_config, rng):
     last = last_config or DEFAULTS
     degrees = parse_degrees(a.degrees, DEGREES) if a.degrees else tuple(last["degrees"])
     length = a.length if a.length is not None else last["length"]
-    step = a.step if a.step is not None else last["step"]
+    spread = a.spread if a.spread is not None else last.get("spread", DEFAULTS["spread"])
     hearings = a.hearings if a.hearings is not None else last["hearings"]
+    if len(degrees) < 2:
+        raise SystemExit("a melody needs at least two degrees to move between")
     if length < 1:
         raise SystemExit("--length must be at least 1")
     if hearings < 1:
         raise SystemExit("--hearings must be at least 1")
-    if not 0 <= step <= 1:
-        raise SystemExit("--step is a share, 0 to 1")
+    if not 0 <= spread <= 1:
+        raise SystemExit("--spread is 0 (steps only) to 1 (any other degree, equally)")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), length=length, step=step,
+    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), length=length, spread=spread,
                 hearings=hearings, singer=a.singer, keys=length)
 
 
 def hint(config, width):
-    return (f"{config['length']} notes on {' '.join(config['degrees'])}, step {config['step']:g}, heard {config['hearings']}x. "
+    return (f"{config['length']} notes on {' '.join(config['degrees'])}, spread {config['spread']:g}, heard {config['hearings']}x. "
             f"Keys 1-8 (or {HOME_ROW}{OCTAVE_KEY}), shifted ({FLAT_ROW}) for the flat (> = b3); "
             "a note past the last starts over, backspace clears.")
 
