@@ -63,7 +63,7 @@ CADENCE_REST_BEATS = 2         # after the last one, before the first question
 OUTRO_SECONDS = 2.0            # drone alone after the last answer, fading out
 RING = 0.25                    # a note rings this long past its beats
 
-DEFAULTS = dict(minutes=2.0, key=None, bpm=50.0, degrees=SHORTHANDS["major"], voice="default")
+DEFAULTS = dict(minutes=4.0, key=None, bpm=50.0, degrees=SHORTHANDS["major"], voice="default")
 MIN_BPM, MAX_BPM = 20, 240
 
 # Sessions before 2026-11-05 had a scale instead of a list and stored a degree
