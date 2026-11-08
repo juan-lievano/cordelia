@@ -7,14 +7,21 @@ time: a press past the `keys`th starts the answer over, and backspace
 clears it. One key is a degree, four a melody, joined by spaces either
 way. Presses between the window's end and the next question are recorded
 as late and never count. A degree is right in any octave: `1` answers an
-`8` (since 2026-11-08; before, 8 had its own key).
+`8`, `b3` a `b10` (since 2026-11-08; before, 8 had its own key).
 """
 
-OCTAVES = {"8": "1"}       # labels that name another label an octave away
+import re
 
 
 def fold(answer):
-    return " ".join(OCTAVES.get(l, l) for l in answer.split(" "))
+    """Every degree brought into the first octave: 8 is 1, b10 is b3, 15 is 1;
+    any other label (a chord quality, say) stays."""
+    return " ".join(_fold(l) for l in answer.split(" "))
+
+
+def _fold(label):
+    m = re.fullmatch(r"(b?)(\d+)", label)
+    return f"{m[1]}{(int(m[2]) - 1) % 7 + 1}" if m else label
 
 
 def typed(presses, keymap, keys=1):
