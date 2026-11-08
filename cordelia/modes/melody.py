@@ -210,7 +210,7 @@ def configure(a, last_config, rng):
     last = last_config or DEFAULTS
     degrees = parse_degrees(a.degrees, DEGREES) if a.degrees else tuple(last["degrees"])
     length = a.length if a.length is not None else last["length"]
-    spread = a.spread if a.spread is not None else last.get("spread", DEFAULTS["spread"])
+    spread = a.spread if a.spread is not None else last["spread"]
     hearings = a.hearings if a.hearings is not None else last["hearings"]
     if len(degrees) < 2:
         raise SystemExit("a melody needs at least two degrees to move between")
