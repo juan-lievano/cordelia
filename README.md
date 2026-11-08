@@ -18,7 +18,7 @@ python3 -m cordelia degrees --voice Samantha       # any `say -v ?` voice
 python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag none clears
 python3 -m cordelia degrees --midi t.mid           # also write the score as MIDI
 python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
-python3 -m cordelia melody                         # 5 min, 55 BPM, the last melody recipe (at first: four notes on 1 to 5, mostly stepwise), sung back
+python3 -m cordelia melody                         # 5 min, the last melody recipe and BPM (at first: four notes on 1 to 5, mostly stepwise, 55 BPM), sung back
 python3 -m cordelia melody 1 2 b3 4 5 --length 3 --spread 0.5 --key G --singer chengu
 python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualities at the level last played (1 at first)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
@@ -86,14 +86,16 @@ beats 25-26   rest
 Sessions before 2026-11-08 had four clicks between hearings; the commit
 stored with each session tells which.
 
-At the default 55 BPM a beat is 1.09 s (`--bpm` changes it).
+At 55 BPM, the first session's tempo, a beat is 1.09 s (`--bpm` changes it; later sessions keep the last one's).
 
-Type the degrees as you make them out, one key per note (1-8, or
-h , . n e i l u; shifted for the flat, since a key twice is a repeated
-note here; 8 or u is the tonic above). A note
-past the last starts the answer over, backspace clears it, and what stands
-when the singing starts is the answer, stored as `1 2 b3 1`, so a note can
-be right on its own in the stats. The singing comes from the
+Type the degrees as you make them out, one key per note (1-7, or
+h , . n e i l; shifted for the flat, since a key twice is a repeated note
+here). A degree is the same key in any octave: 1 answers an 8, and the
+scorer folds the two before comparing (since 2026-11-08; before, 8 and u
+were the tonic above). A note past the last starts the answer over,
+backspace clears it, and what stands when the singing starts is the
+answer, stored as `1 2 b3 1`, so a note can be right on its own in the
+stats. The singing comes from the
 solfege samples in `solfege_samples/` (fixed-do, one syllable per
 semitone): each note is the singer's nearest sample of that syllable,
 pitched to the note by TD-PSOLA (`cordelia/psola.py`), which moves the

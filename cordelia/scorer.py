@@ -6,8 +6,15 @@ the question's onset until the answer starts sounding, read `keys` at a
 time: a press past the `keys`th starts the answer over, and backspace
 clears it. One key is a degree, four a melody, joined by spaces either
 way. Presses between the window's end and the next question are recorded
-as late and never count.
+as late and never count. A degree is right in any octave: `1` answers an
+`8` (since 2026-11-08; before, 8 had its own key).
 """
+
+OCTAVES = {"8": "1"}       # labels that name another label an octave away
+
+
+def fold(answer):
+    return " ".join(OCTAVES.get(l, l) for l in answer.split(" "))
 
 
 def typed(presses, keymap, keys=1):
@@ -43,7 +50,7 @@ def score(items, keystrokes, keymap, keys=1):
         late = sum(1 for t, k in presses if it["window_end_ms"] <= t < nxt and k in keymap)
         if labels:
             answer = " ".join(labels)
-            correct = int(answer == it["truth"])
+            correct = int(fold(answer) == fold(it["truth"]))
             latency = mapped[-1][0] - it["ask_ms"]
         else:
             answer, correct, latency = None, None, None

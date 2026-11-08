@@ -59,20 +59,20 @@ CADENCE_BASS = (("1", -1), ("5", -1))
 
 
 # A melody has repeats, so a key twice must stay two notes: the flat is the
-# home-row key shifted instead (> is b3), and 8 is the next key along.
+# home-row key shifted instead (> is b3). No key for 8: a degree is typed
+# the same in any octave (the scorer folds 8 to 1); before 2026-11-08, 8
+# and u were the tonic above.
 FLAT_ROW = "H<>NEIL"
-OCTAVE_KEY = "u"
 
 
 def keymap():
     """Digits and home-row keys name the naturals, the shifted home-row key
-    the flat under it, and 8 or the next home-row key the tonic above."""
+    the flat under it."""
     km = {}
     for d in range(1, 8):
         km[str(d)] = km[HOME_ROW[d - 1]] = str(d)
         if f"b{d}" in SEMITONES:
             km[FLAT_ROW[d - 1]] = f"b{d}"
-    km["8"] = km[OCTAVE_KEY] = "8"
     return km
 
 
@@ -93,7 +93,7 @@ def exercise(config):
 
 
 def describe(config):
-    return f"{NOTE_NAMES[parse_key(config['key'])]}, {', '.join(recipe(config))}, {config['bpm']:g} BPM"
+    return f"{NOTE_NAMES[parse_key(config['key'])]} · {' · '.join(recipe(config))} · {config['bpm']:g} BPM"
 
 
 class Builder:
@@ -212,6 +212,7 @@ def configure(a, last_config, rng):
     length = a.length if a.length is not None else last["length"]
     spread = a.spread if a.spread is not None else last["spread"]
     hearings = a.hearings if a.hearings is not None else last["hearings"]
+    bpm = a.bpm if a.bpm is not None else last["bpm"]
     if len(degrees) < 2:
         raise SystemExit("a melody needs at least two degrees to move between")
     if length < 1:
@@ -222,13 +223,13 @@ def configure(a, last_config, rng):
         raise SystemExit("--spread is 0 (steps only) to 1 (any other degree, equally)")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), length=length, spread=spread,
+    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=bpm, degrees=list(degrees), length=length, spread=spread,
                 hearings=hearings, singer=a.singer, keys=length)
 
 
 def hint(config, width):
-    return (f"{config['length']} notes on {' '.join(config['degrees'])}, spread {config['spread']:g}, heard {config['hearings']}x. "
-            f"Keys 1-8 (or {HOME_ROW}{OCTAVE_KEY}), shifted ({FLAT_ROW}) for the flat (> = b3). "
+    """What the title doesn't say: the keys and the flats' syllables."""
+    return (f"keys 1-7 (or {HOME_ROW}), shifted ({FLAT_ROW}) for the flat (> = b3), 1 for 8. "
             + ", ".join(f"{d} {SYLLABLE[d]}" for d in config["degrees"] if d.startswith("b")))
 
 
