@@ -159,7 +159,7 @@ def cmd_session(mode, a):
         render(score, wav, bank, progress)
         store.add_items(con, sid, items)
         title = (f"session {sid} · {mode.describe(config)} · {len(items)} q, "
-                 f"{score.seconds / 60:.0f} min" + (f" · tags: {', '.join(tg)}" if tg else ""))
+                 f"{score.seconds / 60:.0f} min · " + (f"tags: {', '.join(tg)}" if tg else "no tags"))
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         body = "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
         warning = stats.box("UNCOMMITTED CHANGES", "this session is recorded with `commit: null`, "

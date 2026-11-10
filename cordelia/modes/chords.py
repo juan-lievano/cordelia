@@ -94,7 +94,7 @@ def exercise(config, brief=False):
 
 
 def describe(config):
-    return f"level {config['level']}, {config['bpm']:g} BPM"
+    return f"level {config['level']}, {config['bpm']:g} BPM, voice {config.get('voice', 'default')}"
 
 
 def bank(config, data_dir):

@@ -176,8 +176,15 @@ def spoken(degrees):
     return {label: SPOKEN[label] for label in degrees}
 
 
+def key_text(config):
+    """The session's key and the list it was drawn from: `Eb (from D Eb E F F#)`, `Eb (from all 12)`."""
+    pool = config.get("key_pool")
+    drawn = "" if pool is None else " (from all 12)" if len(pool) == 12 else f" (from {' '.join(pool)})"
+    return NOTE_NAMES[parse_key(config["key"])] + drawn
+
+
 def describe(config):
-    return f"{NOTE_NAMES[parse_key(config['key'])]}, {' '.join(degrees_of(config))}, {config['bpm']:g} BPM"
+    return f"{key_text(config)}, {' '.join(degrees_of(config))}, {config['bpm']:g} BPM, voice {config.get('voice', 'default')}"
 
 
 def bank(config, data_dir):

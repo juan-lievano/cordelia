@@ -20,7 +20,7 @@ import random
 
 from ..score import Clip, Note, Score
 from ..voice import SYLLABLE, SungBank, sung_label
-from .degrees import FLAT_ROW, HOME_ROW, NOTE_NAMES, SEMITONES, draw_key, key_pool, parse_degrees, parse_key, short, tonic_midi
+from .degrees import FLAT_ROW, HOME_ROW, SEMITONES, draw_key, key_pool, key_text, parse_degrees, parse_key, short, tonic_midi
 
 NAME = "melody"
 
@@ -93,7 +93,7 @@ def exercise(config, brief=False):
 
 
 def describe(config):
-    return f"{NOTE_NAMES[parse_key(config['key'])]} · {' · '.join(recipe(config))} · {config['bpm']:g} BPM"
+    return f"{key_text(config)} · {' · '.join(recipe(config))} · {config['bpm']:g} BPM · sung by {config.get('singer', 'jennifer')}"
 
 
 class Builder:
