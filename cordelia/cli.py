@@ -11,7 +11,7 @@ import sys
 import tempfile
 import textwrap
 
-from . import journal, scorer, stats, store
+from . import art, journal, scorer, stats, store
 from .collector import collect
 from .modes import MODES, chords, degrees, melody
 from .synth import render
@@ -159,13 +159,13 @@ def cmd_session(mode, a):
         render(score, wav, bank, progress)
         store.add_items(con, sid, items)
         title = f"session {sid} · {mode.NAME}"
-        width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
+        width = min(64, shutil.get_terminal_size().columns - 2 - 2 * stats.PAD)
         rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions"),
                 ("tags", ", ".join(tg) or "none")]
         body = settings_table(rows, width) + "\n\n" + "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
         warning = stats.box("UNCOMMITTED CHANGES", "this session is recorded with `commit: null`, "
                             "nothing says what code produced it") + "\n" if config["commit"] is None else ""
-        print("\r\x1b[K\n" + warning + stats.box(title, body) + "\n")
+        print("\r\x1b[K\n" + stats.centred(warning + with_violin(title, body)) + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
         keystrokes, outcome, stopped_at = collect(
             wav, ask_ms, status=lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap, config["keys"]), config))
@@ -185,6 +185,18 @@ def cmd_session(mode, a):
             os.rmdir(tmpdir)
     if interrupted:
         die_of_interrupt()
+
+
+def with_violin(title, body, rows=12):
+    """The session's box with a violin in a box of the same height beside it, when the terminal
+    is wide enough for both; else the session's box alone."""
+    alone = stats.box(title, body)
+    lines = body.split("\n")
+    rows = max(rows, len(lines))
+    above = (rows - len(lines)) // 2
+    pair = stats.beside([stats.box(title, "\n".join([""] * above + lines + [""] * (rows - len(lines) - above))),
+                         stats.box("", art.braille(rows))])
+    return pair if len(pair.split("\n")[0]) <= stats.columns() else alone
 
 
 def settings_table(rows, width):
@@ -217,9 +229,9 @@ def ambient(a, mode, config, score, items, bank):
     try:
         render(score, wav, bank, progress)
         title = f"ambient · {mode.NAME} · not recorded"
-        width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
+        width = min(64, shutil.get_terminal_size().columns - 2 - 2 * stats.PAD)
         rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions")]
-        print("\r\x1b[K\n" + stats.box(title, settings_table(rows, width) + "\n\nEsc stops.") + "\n")
+        print("\r\x1b[K\n" + stats.centred(with_violin(title, settings_table(rows, width) + "\n\nEsc stops.")) + "\n")
         _, outcome, _ = collect(wav, [round(it["ask_s"] * 1000) for it in items])
     finally:
         if tmpdir:
