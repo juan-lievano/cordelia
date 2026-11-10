@@ -101,7 +101,7 @@ HOME_ROW = "h,.neil"
 
 def keymap():
     """Digits and home-row keys name the naturals; the same key twice names
-    the flat under it (`33` is b3). Every degree is typeable whatever the
+    the flat under it (`33` is b3); 8, or u, is another 1. Every degree is typeable whatever the
     list asked, so a flat answered in a major session is recorded as what it was."""
     km = {}
     for d in range(1, 8):
@@ -109,6 +109,7 @@ def keymap():
             if f"b{d}" in SEMITONES:
                 km[k + k] = f"b{d}"
             km[k] = str(d)
+    km["8"] = km["u"] = "1"
     return dict(sorted(km.items(), key=lambda kv: SEMITONES[kv[1]]))
 
 

@@ -48,7 +48,7 @@ octave up (a beat each) set the key, and after two beats of rest the
 questions start, each at 50 BPM (1.2 s a beat; `--bpm` changes it):
 
 ```
-beats 1-2   the note           — press 1-7, or h , . n e i l; the same key twice for the flat (33 = ♭3)
+beats 1-2   the note           — press 1-7 (8 is 1), or h , . n e i l (u is 1); the same key twice for the flat (33 = ♭3)
 beats 3-4   silence            — the answer window; the last key pressed in it counts
 beat  5     the voice says it  — "four", "flat seven"
 beats 6-7   the note again
@@ -95,7 +95,7 @@ At 55 BPM, the first session's tempo, a beat is 1.09 s (`--bpm` changes it; late
 
 Type the degrees as you make them out, one key per note (1-7, or
 h , . n e i l; shifted for the flat, since a key twice is a repeated note
-here). A degree is the same key in any octave: 1 answers an 8, and the
+here). A degree is the same key in any octave: 1 answers an 8 (and the 8 key, or u, is another 1), and the
 scorer folds the two before comparing (since 2026-11-08; before, 8 and u
 were the tonic above). A note past the last starts the answer over,
 backspace clears it, and what stands when the singing starts is the

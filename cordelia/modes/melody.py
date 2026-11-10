@@ -59,9 +59,9 @@ CADENCE_BASS = (("1", -1), ("5", -1))
 
 
 # A melody has repeats, so a key twice must stay two notes: the flat is the
-# home-row key shifted instead (> is b3). No key for 8: a degree is typed
-# the same in any octave (the scorer folds 8 to 1); before 2026-11-08, 8
-# and u were the tonic above.
+# home-row key shifted instead (> is b3). A degree is typed the same in any
+# octave (the scorer folds 8 to 1), and the 8 key (u, next along the row) is
+# another 1 for the hand that reaches for it; before 2026-11-08, 8 and u were the tonic above.
 FLAT_ROW = "H<>NEIL"
 
 
@@ -73,6 +73,7 @@ def keymap():
         km[str(d)] = km[HOME_ROW[d - 1]] = str(d)
         if f"b{d}" in SEMITONES:
             km[FLAT_ROW[d - 1]] = f"b{d}"
+    km["8"] = km["u"] = "1"
     return km
 
 
@@ -229,7 +230,7 @@ def configure(a, last_config, rng):
 
 def hint(config, width):
     """What the title doesn't say: the keys and the flats' syllables."""
-    return (f"keys 1-7 (or {HOME_ROW}), shifted ({FLAT_ROW}) for the flat (> = b3), 1 for 8. "
+    return (f"keys 1-7 (or {HOME_ROW}), shifted ({FLAT_ROW}) for the flat (> = b3), 8 or u is 1. "
             + ", ".join(f"{d} {SYLLABLE[d]}" for d in config["degrees"] if d.startswith("b")))
 
 
