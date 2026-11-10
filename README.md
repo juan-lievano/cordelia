@@ -193,8 +193,8 @@ sits in whatever width is left.
 so that harder settings don't read as regression. An exercise is its mode
 and its content (the degree list, the melody recipe, the chords level), and
 no table mixes two. `journal` is the practice wall: a column per week, a
-cell per weekday, shaded by the minutes practised that day across every
-mode.
+cell per weekday, a dot in it for every 2 minutes practised that day across
+every mode (full at 128).
 
 ### Adding a mode
 
