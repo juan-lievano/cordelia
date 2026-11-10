@@ -102,7 +102,7 @@ FLAT_ROW = "H<>NEIL"    # the home-row keys shifted: the flat under each
 
 def keymap():
     """Digits and home-row keys name the naturals; the same key twice names
-    the flat under it (`33` is b3), and so does the home-row key shifted
+    the flat under it (`33` is b3; once more, `333`, is 3 again), and so does the home-row key shifted
     (`>` is b3); 8, or u, is another 1. Every degree is typeable whatever the
     list asked, so a flat answered in a major session is recorded as what it was."""
     km = {}

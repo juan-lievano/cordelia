@@ -27,14 +27,15 @@ def _fold(label):
 def typed(presses, keymap, keys=1):
     """The labels a run of key names spells: at most `keys`, the next press
     starting over, backspace clearing. A keymap entry for two presses
-    (`33`: b3, in sessions before 2026-11-07) turns the label the first
-    press made into another; a keymap without such entries never sees it."""
+    (`33`: b3) turns the label the first press made into another, and the
+    key once more turns it back (`333` is 3, `3333` b3); a keymap without
+    such entries never sees it."""
     out, prev = [], None
     for k in presses:
         if k == "backspace":
             out, prev = [], None
         elif prev is not None and out and prev + k in keymap:
-            out[-1] = keymap[prev + k]
+            out[-1] = keymap[k] if out[-1] == keymap[prev + k] else keymap[prev + k]
             prev = k
         elif k in keymap:
             if len(out) >= keys:

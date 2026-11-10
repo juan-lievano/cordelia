@@ -48,7 +48,7 @@ octave up (a beat each) set the key, and after two beats of rest the
 questions start, each at 50 BPM (1.2 s a beat; `--bpm` changes it):
 
 ```
-beats 1-2   the note           — press 1-7 (8 is 1), or h , . n e i l (u is 1); the same key twice, or shifted, for the flat (33 or > = ♭3)
+beats 1-2   the note           — press 1-7 (8 is 1), or h , . n e i l (u is 1); the same key twice, or shifted, for the flat (33 or > = ♭3), a third time for the natural again
 beats 3-4   silence            — the answer window; the last key pressed in it counts
 beat  5     the voice says it  — "four", "flat seven"
 beats 6-7   the note again
