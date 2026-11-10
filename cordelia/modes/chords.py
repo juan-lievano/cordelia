@@ -105,7 +105,7 @@ def bank(config, data_dir):
 
 def configure(a, last_config, rng):
     """A session config from the parsed flags, or a SystemExit saying why not."""
-    level = a.level if a.level is not None else (last_config or {}).get("level", DEFAULTS["level"])
+    level = a.level
     if level not in LEVELS:
         raise SystemExit(f"level {level}: choose from {', '.join(map(str, LEVELS))}")
     if a.minutes <= 0:

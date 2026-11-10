@@ -176,7 +176,7 @@ def configure(a, last_config, rng):
     pc = parse_key(a.key or random_key(rng, last_config and last_config.get("key")))
     if pc is None:
         raise SystemExit(f"--key {a.key!r} is not a note name")
-    degrees = parse_degrees(a.degrees) if a.degrees else (degrees_of(last_config) if last_config else DEFAULTS["degrees"])
+    degrees = parse_degrees(a.degrees)
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
     return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), voice=a.voice, keys=1)

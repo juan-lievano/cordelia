@@ -25,38 +25,35 @@ def main(argv=None):
     d = sub.add_parser("degrees", help="scale degrees over a drone, the answer spoken after each")
     d.add_argument("degrees", nargs="*", metavar="DEGREE",
                    help=f"the degrees to ask, from {' '.join(degrees.SEMITONES)}; "
-                        + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items())
-                        + " (default: the last degrees session's list)")
-    d.add_argument("--minutes", type=float, default=degrees.DEFAULTS["minutes"])
+                        + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
+    d.add_argument("--minutes", type=float)
     d.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
-    d.add_argument("--bpm", type=float, default=degrees.DEFAULTS["bpm"])
-    d.add_argument("--voice", default=degrees.DEFAULTS["voice"], help="a `say -v ?` voice; default = system voice")
+    d.add_argument("--bpm", type=float)
+    d.add_argument("--voice", help="a `say -v ?` voice; 'default' = system voice")
     session_flags(d)
 
     m = sub.add_parser("melody", help="short melodies over a drone, sung back after each")
     m.add_argument("degrees", nargs="*", metavar="DEGREE",
                    help=f"the degrees a melody may use, from {' '.join(melody.DEGREES)}; "
-                        + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items())
-                        + " (default: the last melody session's list)")
-    m.add_argument("--length", type=int, help="notes in a melody (default: the last session's)")
+                        + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
+    m.add_argument("--length", type=int, help="notes in a melody")
     m.add_argument("--spread", type=float,
                    help="how far a move tends to go: a move of d positions along the list weighs spread^(d-1), "
-                        "so 0 is steps only, 1 any other degree equally, 0.2 mostly steps with the odd third "
-                        "(default: the last session's)")
-    m.add_argument("--hearings", type=int, help="times a melody is played before the answer (default: the last session's)")
-    m.add_argument("--minutes", type=float, default=melody.DEFAULTS["minutes"])
+                        "so 0 is steps only, 1 any other degree equally, 0.2 mostly steps with the odd third")
+    m.add_argument("--hearings", type=int, help="times a melody is played before the answer")
+    m.add_argument("--minutes", type=float)
     m.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
-    m.add_argument("--bpm", type=float, help="(default: the last session's)")
-    m.add_argument("--singer", default=melody.DEFAULTS["singer"], help=" | ".join(SINGERS))
+    m.add_argument("--bpm", type=float)
+    m.add_argument("--singer", help=" | ".join(SINGERS))
     session_flags(m)
 
     c = sub.add_parser("chords", help="chord qualities, the answer spoken then arpeggiated after each")
     c.add_argument("level", type=int, nargs="?",
                    help="; ".join(f"{n}: {spec['about']}" for n, spec in chords.LEVELS.items())
-                   + " (default: the last chords session's level)")
-    c.add_argument("--minutes", type=float, default=chords.DEFAULTS["minutes"])
-    c.add_argument("--bpm", type=float, default=chords.DEFAULTS["bpm"])
-    c.add_argument("--voice", default=chords.DEFAULTS["voice"], help="a `say -v ?` voice; default = system voice")
+                  )
+    c.add_argument("--minutes", type=float)
+    c.add_argument("--bpm", type=float)
+    c.add_argument("--voice", help="a `say -v ?` voice; 'default' = system voice")
     session_flags(c)
 
     s = sub.add_parser("stats", help="the last exercise played: a right%% histogram, degree and chord confusions")
@@ -103,6 +100,7 @@ def commit():
 
 
 def session_flags(p):
+    p.epilog = "Every setting left out is the last session's of this drill; the key is random, not the last one."
     p.add_argument("--tag", help="tag this and every later session (sticky); 'none' clears")
     p.add_argument("--keep-wav", action="store_true", help="keep the session's WAV in data/sessions/")
     p.add_argument("--midi", metavar="FILE", help="also write the score as a MIDI file")
@@ -117,9 +115,18 @@ def tags(con, flag=None):
     return json.loads(store.setting(con, "tags", "[]"))
 
 
+def remember(a, defaults, last_config):
+    """Every setting left off the command line is the last session's of the mode (the mode's
+    default before there is one), except the key, which a mode draws at random on purpose."""
+    for name, default in defaults.items():
+        if name != "key" and getattr(a, name) in (None, []):
+            setattr(a, name, (last_config or {}).get(name, default))
+
+
 def cmd_session(mode, a):
     con = store.connect()
     last = store.session(con, store.last_session_id(con, mode.NAME) or 0)
+    remember(a, mode.DEFAULTS, last and last["config"])
     config = mode.configure(a, last and last["config"], random.Random(a.seed))
     if not degrees.MIN_BPM <= config["bpm"] <= degrees.MAX_BPM:
         raise SystemExit(f"--bpm must be between {degrees.MIN_BPM} and {degrees.MAX_BPM}")

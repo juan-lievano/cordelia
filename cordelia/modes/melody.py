@@ -207,12 +207,7 @@ def configure(a, last_config, rng):
     pc = parse_key(a.key or random_key(rng, last_config and last_config.get("key")))
     if pc is None:
         raise SystemExit(f"--key {a.key!r} is not a note name")
-    last = last_config or DEFAULTS
-    degrees = parse_degrees(a.degrees, DEGREES) if a.degrees else tuple(last["degrees"])
-    length = a.length if a.length is not None else last["length"]
-    spread = a.spread if a.spread is not None else last["spread"]
-    hearings = a.hearings if a.hearings is not None else last["hearings"]
-    bpm = a.bpm if a.bpm is not None else last["bpm"]
+    degrees, length, spread, hearings, bpm = parse_degrees(a.degrees, DEGREES), a.length, a.spread, a.hearings, a.bpm
     if len(degrees) < 2:
         raise SystemExit("a melody needs at least two degrees to move between")
     if length < 1:

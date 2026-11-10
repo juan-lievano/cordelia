@@ -14,7 +14,7 @@ That matters more than keeping this README current; the README explains how
 things work and can lag, the cheat sheet is what gets read before typing.
 
 ```sh
-cordelia degrees                                   # 2 min, 50 BPM, the degrees last asked (major at first), random key
+cordelia degrees                                   # every setting the last degrees session's (at first: 4 min, 50 BPM, major), random key
 cordelia degrees minor --minutes 5
 python3 -m cordelia degrees                        # the same, from the repo
 python3 -m cordelia degrees 1 2 b3 4 5 b6 b7 --key A   # any list of degrees is an exercise; minor = this list, all = the twelve
@@ -23,9 +23,9 @@ python3 -m cordelia degrees --voice Samantha       # any `say -v ?` voice
 python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag none clears
 python3 -m cordelia degrees --midi t.mid           # also write the score as MIDI
 python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
-python3 -m cordelia melody                         # 5 min, the last melody recipe and BPM (at first: four notes on 1 to 5, mostly stepwise, 55 BPM), sung back
+python3 -m cordelia melody                         # the last melody session's settings (at first: 5 min, four notes on 1 to 5, mostly stepwise, 55 BPM), sung back
 python3 -m cordelia melody 1 2 b3 4 5 --length 3 --spread 0.5 --key G --singer chengu
-python3 -m cordelia chords                         # 4 min, 50 BPM, chord qualities at the level last played (1 at first)
+python3 -m cordelia chords                         # the last chords session's settings (at first: 4 min, 50 BPM, level 1)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
 python3 -m cordelia stats                          # the last exercise played: histogram, trend, confusions
 python3 -m cordelia stats --degrees minor --tag headphones
@@ -34,6 +34,10 @@ python3 -m cordelia journal                        # minutes practised, a cell p
 python3 -m cordelia rescore                        # rebuild answers from the raw presses
 python3 -m cordelia tags | data
 ```
+
+Every drill setting left off the command line is the last session's of that
+drill (`cli.remember`), the mode's default before there is one; the key is the
+exception, drawn at random and never the last one.
 
 `~/.local/bin/cordelia` is a two-line wrapper that runs `python3 -m cordelia`
 from this checkout; `pip install -e .` does the same.
@@ -117,8 +121,7 @@ the same shorthands), `--length` for how many notes, `--spread` for how far
 a move tends to go (to any other degree in the list, one d positions away
 weighing spread^(d-1): 0 is steps only, 1 any other degree equally; the
 first note is uniform), and `--hearings` for
-how many times a melody is played before the answer. Each defaults to the
-last melody session's. The four together are the exercise the stats group
+how many times a melody is played before the answer. The four together are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
 typed, and so is `--length 5` or `--hearings 2` on a list already played. The two numbered
 levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the
