@@ -11,7 +11,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `--bpm 40`                             | tempo (50)                                      |
 |                | `--voice Samantha`                     | any `say -v ?` voice                            |
 |                | &nbsp;keys | `1`-`7` or `h , . n e i l`; `8` / `u` = 1       |
-|                | &nbsp;flat | the key twice (`33` = b3)                       |
+|                | &nbsp;flat | twice (`33`) or shifted (`>`) = b3              |
 |                | &nbsp;counts | the last key before the voice                   |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Melody**     | `cordelia melody`                      | last recipe                                     |

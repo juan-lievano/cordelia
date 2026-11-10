@@ -20,7 +20,7 @@ import random
 
 from ..score import Clip, Note, Score
 from ..voice import SYLLABLE, SungBank, sung_label
-from .degrees import HOME_ROW, NOTE_NAMES, SEMITONES, parse_degrees, parse_key, random_key, short, tonic_midi
+from .degrees import FLAT_ROW, HOME_ROW, NOTE_NAMES, SEMITONES, parse_degrees, parse_key, random_key, short, tonic_midi
 
 NAME = "melody"
 
@@ -62,7 +62,6 @@ CADENCE_BASS = (("1", -1), ("5", -1))
 # home-row key shifted instead (> is b3). A degree is typed the same in any
 # octave (the scorer folds 8 to 1), and the 8 key (u, next along the row) is
 # another 1 for the hand that reaches for it; before 2026-11-08, 8 and u were the tonic above.
-FLAT_ROW = "H<>NEIL"
 
 
 def keymap():

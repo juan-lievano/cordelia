@@ -97,11 +97,13 @@ def parse_key(text):
 # The digits, and the keys that sit under them on a layer, so one hand can
 # answer without the layer key: h , . n e i l stand in for 1-7.
 HOME_ROW = "h,.neil"
+FLAT_ROW = "H<>NEIL"    # the home-row keys shifted: the flat under each
 
 
 def keymap():
     """Digits and home-row keys name the naturals; the same key twice names
-    the flat under it (`33` is b3); 8, or u, is another 1. Every degree is typeable whatever the
+    the flat under it (`33` is b3), and so does the home-row key shifted
+    (`>` is b3); 8, or u, is another 1. Every degree is typeable whatever the
     list asked, so a flat answered in a major session is recorded as what it was."""
     km = {}
     for d in range(1, 8):
@@ -109,6 +111,8 @@ def keymap():
             if f"b{d}" in SEMITONES:
                 km[k + k] = f"b{d}"
             km[k] = str(d)
+        if f"b{d}" in SEMITONES:
+            km[FLAT_ROW[d - 1]] = f"b{d}"
     km["8"] = km["u"] = "1"
     return dict(sorted(km.items(), key=lambda kv: SEMITONES[kv[1]]))
 
@@ -179,7 +183,7 @@ def configure(a, last_config, rng):
 
 
 def hint(config, width):
-    return f"keys 1-7 (or {HOME_ROW}) answer, the same key twice for the flat (33 = b3)."
+    return f"keys 1-7 (or {HOME_ROW}) answer, the same key twice or shifted for the flat (33 or > = b3)."
 
 
 def status(current, n, typed, config):
