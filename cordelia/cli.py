@@ -158,10 +158,11 @@ def cmd_session(mode, a):
     try:
         render(score, wav, bank, progress)
         store.add_items(con, sid, items)
-        title = (f"session {sid} · {mode.describe(config)} · {len(items)} q, "
-                 f"{score.seconds / 60:.0f} min · " + (f"tags: {', '.join(tg)}" if tg else "no tags"))
+        title = f"session {sid} · {mode.NAME}"
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
-        body = "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
+        rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions"),
+                ("tags", ", ".join(tg) or "none")]
+        body = settings_table(rows, width) + "\n\n" + "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
         warning = stats.box("UNCOMMITTED CHANGES", "this session is recorded with `commit: null`, "
                             "nothing says what code produced it") + "\n" if config["commit"] is None else ""
         print("\r\x1b[K\n" + warning + stats.box(title, body) + "\n")
@@ -186,6 +187,13 @@ def cmd_session(mode, a):
         die_of_interrupt()
 
 
+def settings_table(rows, width):
+    """(name, value) rows as two columns, a long value wrapped under its own column."""
+    pad = max(len(name) for name, _ in rows) + 3
+    return "\n".join(textwrap.fill(value, width, initial_indent=name.ljust(pad), subsequent_indent=" " * pad)
+                     for name, value in rows)
+
+
 def die_of_interrupt():
     """Ctrl+C was caught to save the session; now end the way an uncaught one would, killed by
     SIGINT, so the shell stops a `a; b` chain or a loop instead of going on to the next command."""
@@ -208,8 +216,10 @@ def ambient(a, mode, config, score, items, bank):
         wav = os.path.join(tmpdir, "session.wav")
     try:
         render(score, wav, bank, progress)
-        title = f"ambient · {mode.describe(config)} · {len(items)} q, {score.seconds / 60:.0f} min · not recorded"
-        print("\r\x1b[K\n" + stats.box(title, "Esc stops.") + "\n")
+        title = f"ambient · {mode.NAME} · not recorded"
+        width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
+        rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions")]
+        print("\r\x1b[K\n" + stats.box(title, settings_table(rows, width) + "\n\nEsc stops.") + "\n")
         _, outcome, _ = collect(wav, [round(it["ask_s"] * 1000) for it in items])
     finally:
         if tmpdir:

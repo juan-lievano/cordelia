@@ -61,7 +61,7 @@ CADENCE_BASS = (("1", -1), ("5", -1))
 # A melody has repeats, so a key twice must stay two notes: the flat is the
 # home-row key shifted instead (> is b3). A degree is typed the same in any
 # octave (the scorer folds 8 to 1), and the 8 key (u, next along the row) is
-# another 1 for the hand that reaches for it; before 2026-11-08, 8 and u were the tonic above.
+# another 1 for the hand that reaches for it, as 9 (y) is another 2; before 2026-11-08, 8 and u were the tonic above.
 
 
 def keymap():
@@ -73,6 +73,8 @@ def keymap():
         if f"b{d}" in SEMITONES:
             km[FLAT_ROW[d - 1]] = f"b{d}"
     km["8"] = km["u"] = "1"
+    km["9"] = km["y"] = "2"
+    km["Y"] = "b2"
     return km
 
 
@@ -92,8 +94,11 @@ def exercise(config, brief=False):
     return recipe(config, brief)
 
 
-def describe(config):
-    return f"{key_text(config)} · {' · '.join(recipe(config))} · {config['bpm']:g} BPM · sung by {config.get('singer', 'jennifer')}"
+def settings(config):
+    """The session's settings for its box, as (name, value) rows."""
+    degrees, melody = recipe(config)
+    return [("key", key_text(config)), ("degrees", degrees), ("melody", melody),
+            ("tempo", f"{config['bpm']:g} BPM"), ("singer", config.get("singer", "jennifer"))]
 
 
 class Builder:
@@ -221,9 +226,10 @@ def configure(a, last_config, rng):
 
 
 def hint(config, width):
-    """What the title doesn't say: the keys and the flats' syllables."""
-    return (f"keys 1-7 (or {HOME_ROW}), shifted ({FLAT_ROW}) for the flat (> = b3), 8 or u is 1. "
-            + ", ".join(f"{d} {SYLLABLE[d]}" for d in config["degrees"] if d.startswith("b")))
+    """The keys and the flats' syllables."""
+    flats = ", ".join(f"{d} {SYLLABLE[d]}" for d in config["degrees"] if d.startswith("b"))
+    return (f"keys 1-9 or {HOME_ROW}uy (8 is 1, 9 is 2); flat: shifted, {FLAT_ROW}Y (> is b3)"
+            + (f"\nflats sung: {flats}" if flats else ""))
 
 
 def status(current, n, typed, config):

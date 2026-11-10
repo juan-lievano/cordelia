@@ -10,7 +10,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `--key D Eb E F F#`                    | keys to draw from, not the last (last; all)     |
 |                | `--bpm 40`                             | tempo (last; 50)                                |
 |                | `--voice Samantha`                     | any `say -v ?` voice (last; system)             |
-|                | &nbsp;keys | `1`-`7` or `h , . n e i l`; `8` / `u` = 1       |
+|                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
 |                | &nbsp;flat | twice (`33`) or shifted (`>`) = b3; `333` = 3   |
 |                | &nbsp;counts | the last key before the voice                   |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
@@ -24,8 +24,8 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--key G`                  | keys to draw from, not the last (last; all)     |
 |                | &nbsp;&nbsp;`--singer chengu`          | or `jennifer` (last; jennifer)                  |
 |                | &nbsp;exercise | list + length + spread + hearings               |
-|                | &nbsp;keys | `1`-`7` or `h , . n e i l`; `8` / `u` = 1       |
-|                | &nbsp;flat | shifted: `H < > N E I L` (`>` = b3)             |
+|                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
+|                | &nbsp;flat | shifted: `H < > N E I L Y` (`>` = b3)           |
 |                | &nbsp;counts | what stands when the singing starts             |
 |                | &nbsp;past the last note / backspace | starts over / clears                            |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |

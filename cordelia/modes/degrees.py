@@ -119,7 +119,7 @@ FLAT_ROW = "H<>NEIL"    # the home-row keys shifted: the flat under each
 def keymap():
     """Digits and home-row keys name the naturals; the same key twice names
     the flat under it (`33` is b3; once more, `333`, is 3 again), and so does the home-row key shifted
-    (`>` is b3); 8, or u, is another 1. Every degree is typeable whatever the
+    (`>` is b3); 8 (or u) is another 1 and 9 (or y) another 2, an octave up. Every degree is typeable whatever the
     list asked, so a flat answered in a major session is recorded as what it was."""
     km = {}
     for d in range(1, 8):
@@ -130,6 +130,8 @@ def keymap():
         if f"b{d}" in SEMITONES:
             km[FLAT_ROW[d - 1]] = f"b{d}"
     km["8"] = km["u"] = "1"
+    km["9"] = km["y"] = "2"
+    km["99"] = km["yy"] = km["Y"] = "b2"
     return dict(sorted(km.items(), key=lambda kv: SEMITONES[kv[1]]))
 
 
@@ -183,8 +185,10 @@ def key_text(config):
     return NOTE_NAMES[parse_key(config["key"])] + drawn
 
 
-def describe(config):
-    return f"{key_text(config)}, {' '.join(degrees_of(config))}, {config['bpm']:g} BPM, voice {config.get('voice', 'default')}"
+def settings(config):
+    """The session's settings for its box, as (name, value) rows."""
+    return [("key", key_text(config)), ("degrees", " ".join(degrees_of(config))),
+            ("tempo", f"{config['bpm']:g} BPM"), ("voice", config.get("voice", "default"))]
 
 
 def bank(config, data_dir):
@@ -205,7 +209,7 @@ def configure(a, last_config, rng):
 
 
 def hint(config, width):
-    return f"keys 1-7 (or {HOME_ROW}) answer, the same key twice or shifted for the flat (33 or > = b3)."
+    return f"keys 1-9 or {HOME_ROW}uy (8 is 1, 9 is 2); flat: the key twice or shifted (33 or > is b3)"
 
 
 def status(current, n, typed, config):

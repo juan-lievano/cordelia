@@ -93,8 +93,10 @@ def exercise(config, brief=False):
     return (str(config["level"]),)
 
 
-def describe(config):
-    return f"level {config['level']}, {config['bpm']:g} BPM, voice {config.get('voice', 'default')}"
+def settings(config):
+    """The session's settings for its box, as (name, value) rows."""
+    return [("level", f"{config['level']}: {LEVELS[config['level']]['about']}"), ("tempo", f"{config['bpm']:g} BPM"),
+            ("voice", config.get("voice", "default"))]
 
 
 def bank(config, data_dir):
