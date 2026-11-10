@@ -8,6 +8,11 @@ afterwards, and `stats` reads the record. Nothing reacts while the audio
 plays, and nothing on screen says whether you were right. Standard library
 only; the spoken answers come from macOS `say`.
 
+`CHEATSHEET.md` lists every command, flag and key in a line each, and is the
+page to keep current: a change to a command updates it in the same commit.
+That matters more than keeping this README current; the README explains how
+things work and can lag, the cheat sheet is what gets read before typing.
+
 ```sh
 cordelia degrees                                   # 2 min, 50 BPM, the degrees last asked (major at first), random key
 cordelia degrees minor --minutes 5
@@ -108,9 +113,10 @@ note under `data/voices/sung-<singer>/`.
 
 The recipe is given on the command line, as in the degrees mode: the
 degrees a melody may use (any of the twelve, `8` for the tonic above, and
-the same shorthands), `--length` for how many notes, `--step` for the share
-of the moves that go to a neighbour in the list (the rest go anywhere else
-in it, a repeat included; the first note is uniform), and `--hearings` for
+the same shorthands), `--length` for how many notes, `--spread` for how far
+a move tends to go (to any other degree in the list, one d positions away
+weighing spread^(d-1): 0 is steps only, 1 any other degree equally; the
+first note is uniform), and `--hearings` for
 how many times a melody is played before the answer. Each defaults to the
 last melody session's. The four together are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
