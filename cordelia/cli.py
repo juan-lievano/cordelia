@@ -5,6 +5,7 @@ import json
 import os
 import random
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -156,6 +157,8 @@ def cmd_session(mode, a):
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
         keystrokes, outcome, stopped_at = collect(
             wav, ask_ms, status=lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap, config["keys"]), config))
+        interrupted = outcome == "interrupted"
+        outcome = "stopped" if interrupted else outcome
         store.add_keystrokes(con, sid, keystrokes)
         store.replace_answers(con, sid, scorer.score(store.items(con, sid), keystrokes, keymap, config["keys"]))
         store.finish_session(con, sid, outcome, stopped_at)
@@ -168,6 +171,16 @@ def cmd_session(mode, a):
             if os.path.exists(wav):
                 os.remove(wav)
             os.rmdir(tmpdir)
+    if interrupted:
+        die_of_interrupt()
+
+
+def die_of_interrupt():
+    """Ctrl+C was caught to save the session; now end the way an uncaught one would, killed by
+    SIGINT, so the shell stops a `a; b` chain or a loop instead of going on to the next command."""
+    sys.stdout.flush()
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    os.kill(os.getpid(), signal.SIGINT)
 
 
 def ambient(a, mode, config, score, items, bank):
@@ -186,12 +199,14 @@ def ambient(a, mode, config, score, items, bank):
         render(score, wav, bank, progress)
         title = f"ambient · {mode.describe(config)} · {len(items)} q, {score.seconds / 60:.0f} min · not recorded"
         print("\r\x1b[K\n" + stats.box(title, "Esc stops.") + "\n")
-        collect(wav, [round(it["ask_s"] * 1000) for it in items])
+        _, outcome, _ = collect(wav, [round(it["ask_s"] * 1000) for it in items])
     finally:
         if tmpdir:
             if os.path.exists(wav):
                 os.remove(wav)
             os.rmdir(tmpdir)
+    if outcome == "interrupted":
+        die_of_interrupt()
 
 
 def cmd_rescore():

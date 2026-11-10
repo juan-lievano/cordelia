@@ -51,6 +51,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `--ambient`                            | just play, nothing recorded                     |
 |                | `caffeinate -i cordelia …`             | long `--ambient`: outlast idle sleep            |
 |                | `Esc`                                  | stop; everything before is kept                 |
+|                | `Ctrl-C`                               | same, and ends a `;` chain or loop              |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Afterwards** | `cordelia stats`                       | last exercise: right% bars, trend, confusions   |
 |                | &nbsp;&nbsp;`--mode chords`            | last session of that mode                       |

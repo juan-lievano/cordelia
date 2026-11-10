@@ -21,7 +21,8 @@ def collect(wav_path, ask_ms, status=None):
 
     keystrokes: [(t_ms, key)] with t_ms counted from the moment playback was
     started. outcome is 'completed' when the audio ran to its end, 'stopped'
-    on Esc or Ctrl+C.
+    on Esc, 'interrupted' on Ctrl+C (the caller saves it as stopped, then
+    dies of the interrupt so the shell ends a `;` chain or loop).
     """
     if not sys.stdin.isatty():
         raise SystemExit("the collector needs a terminal to read keys from")
@@ -70,7 +71,7 @@ def collect(wav_path, ask_ms, status=None):
             typed.append(key)
             dirty = True
     except KeyboardInterrupt:
-        outcome = "stopped"
+        outcome = "interrupted"
     finally:
         stopped_at = now_ms()
         if player.poll() is None:
