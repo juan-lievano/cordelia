@@ -14,10 +14,10 @@ That matters more than keeping this README current; the README explains how
 things work and can lag, the cheat sheet is what gets read before typing.
 
 ```sh
-cordelia degrees                                   # every setting the last degrees session's (at first: 4 min, 50 BPM, major), random key
+cordelia degrees                                   # every setting the last degrees session's (at first: 4 min, 50 BPM, major, any key)
 cordelia degrees minor --minutes 5
 python3 -m cordelia degrees                        # the same, from the repo
-python3 -m cordelia degrees 1 2 b3 4 5 b6 b7 --key A   # any list of degrees is an exercise; minor = this list, all = the twelve
+python3 -m cordelia degrees 1 2 b3 4 5 b6 b7 --key D Eb E   # a key drawn from these each session (all = the twelve); any list of degrees is an exercise; minor = this list, all = the twelve
 python3 -m cordelia degrees 1 2 5 6                # a list never typed before is a new exercise from this session on
 python3 -m cordelia degrees --voice Samantha       # any `say -v ?` voice
 python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag none clears
@@ -36,8 +36,9 @@ python3 -m cordelia tags | data
 ```
 
 Every drill setting left off the command line is the last session's of that
-drill (`cli.remember`), the mode's default before there is one; the key is the
-exception, drawn at random and never the last one.
+drill (`cli.remember`), the mode's default before there is one. That includes
+the `--key` list: each session draws its key from it, never the last session's
+when the list has another.
 
 `~/.local/bin/cordelia` is a two-line wrapper that runs `python3 -m cordelia`
 from this checkout; `pip install -e .` does the same.
@@ -59,8 +60,8 @@ beats 6-7   the note again
 beat  8     rest
 ```
 
-Without `--key`, every session draws a random key, never the one the last
-session was in. The session asks the degrees listed on the command line,
+Each session draws its key from the `--key` list (all twelve until one is
+given), never the one the last session was in. The session asks the degrees listed on the command line,
 any of `1 b2 2 b3 3 4 b5 5 b6 6 b7 7` (`major`, `minor` and `all` expand
 to lists while typing; only the list is stored). The list is the exercise:
 there is no level table, `cordelia degrees 1 2 5 6` is a new exercise the

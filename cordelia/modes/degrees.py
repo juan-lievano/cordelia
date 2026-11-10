@@ -63,7 +63,7 @@ CADENCE_REST_BEATS = 2         # after the last one, before the first question
 OUTRO_SECONDS = 2.0            # drone alone after the last answer, fading out
 RING = 0.25                    # a note rings this long past its beats
 
-DEFAULTS = dict(minutes=4.0, key=None, bpm=50.0, degrees=SHORTHANDS["major"], voice="default")
+DEFAULTS = dict(minutes=4.0, key_pool=["all"], bpm=50.0, degrees=SHORTHANDS["major"], voice="default")
 MIN_BPM, MAX_BPM = 20, 240
 
 # Sessions before 2026-11-05 had a scale instead of a list and stored a degree
@@ -73,9 +73,25 @@ OLD_SCALES = {"major": ("1", "2", "3", "4", "5", "6", "7"),
               "harmonic-minor": ("1", "2", "b3", "4", "5", "b6", "7")}
 
 
-def random_key(rng, avoid=None):
-    """Any key but the one the last session was in."""
-    return rng.choice([k for k in NOTE_NAMES if k != avoid])
+def key_pool(words):
+    """`--key` words -> the keys a session is drawn from, as note names; `all` is the twelve.
+    A SystemExit when a word is not a note name."""
+    pool = []
+    for w in words:
+        if w.lower() == "all":
+            pool += NOTE_NAMES
+            continue
+        pc = parse_key(w)
+        if pc is None:
+            raise SystemExit(f"--key {w!r} is not a note name (or all)")
+        pool.append(NOTE_NAMES[pc])
+    return list(dict.fromkeys(pool))
+
+
+def draw_key(pool, rng, last_config):
+    """A key from the pool, not the last session's when the pool has another."""
+    last = last_config and last_config.get("key")
+    return rng.choice([k for k in pool if k != last] or pool)
 
 
 def tonic_midi(pc):
@@ -173,13 +189,12 @@ def bank(config, data_dir):
 
 def configure(a, last_config, rng):
     """A session config from the parsed flags, or a SystemExit saying why not."""
-    pc = parse_key(a.key or random_key(rng, last_config and last_config.get("key")))
-    if pc is None:
-        raise SystemExit(f"--key {a.key!r} is not a note name")
+    pool = key_pool(a.key_pool)
     degrees = parse_degrees(a.degrees)
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=a.bpm, degrees=list(degrees), voice=a.voice, keys=1)
+    return dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=a.bpm, degrees=list(degrees),
+                voice=a.voice, keys=1)
 
 
 def hint(config, width):

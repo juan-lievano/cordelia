@@ -3,25 +3,25 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 
 |                | Command                                | Does                                            |
 |----------------|----------------------------------------|-------------------------------------------------|
-| **Degrees**    | `cordelia degrees`                     | last session's settings, random key             |
+| **Degrees**    | `cordelia degrees`                     | last session's settings, key drawn from the list |
 |                | `cordelia degrees 1 2 5 6`             | any list = an exercise                          |
 |                | `major` `minor` `all`                  | 1-7 / 1 2 b3 4 5 b6 b7 / the twelve             |
 |                | `--minutes 5`                          | length (last; 4)                                |
-|                | `--key A`                              | tonic (random, not the last)                    |
+|                | `--key D Eb E F F#`                    | keys to draw from, not the last (last; all)     |
 |                | `--bpm 40`                             | tempo (last; 50)                                |
 |                | `--voice Samantha`                     | any `say -v ?` voice (last; system)             |
 |                | &nbsp;keys | `1`-`7` or `h , . n e i l`; `8` / `u` = 1       |
 |                | &nbsp;flat | twice (`33`) or shifted (`>`) = b3; `333` = 3   |
 |                | &nbsp;counts | the last key before the voice                   |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
-| **Melody**     | `cordelia melody`                      | last session's settings, random key             |
+| **Melody**     | `cordelia melody`                      | last session's settings, key drawn from the list |
 |                | `cordelia melody 1 2 b3 4 5`           | degrees allowed (`8`, shorthands too)           |
 |                | &nbsp;&nbsp;`--length 3`               | notes (last; 4)                                 |
 |                | &nbsp;&nbsp;`--spread 0.5`             | 0 steps only, 1 anywhere (last; 0.2)            |
 |                | &nbsp;&nbsp;`--hearings 2`             | plays before the answer (last; 3)               |
 |                | &nbsp;&nbsp;`--bpm 60`                 | tempo (last; 55)                                |
 |                | &nbsp;&nbsp;`--minutes 5`              | length (last; 5)                                |
-|                | &nbsp;&nbsp;`--key G`                  | tonic (random, not the last)                    |
+|                | &nbsp;&nbsp;`--key G`                  | keys to draw from, not the last (last; all)     |
 |                | &nbsp;&nbsp;`--singer chengu`          | or `jennifer` (last; jennifer)                  |
 |                | &nbsp;exercise | list + length + spread + hearings               |
 |                | &nbsp;keys | `1`-`7` or `h , . n e i l`; `8` / `u` = 1       |

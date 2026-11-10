@@ -18,6 +18,10 @@ from .synth import render
 from .voice import SINGERS
 
 
+KEY_HELP = ("the keys a session's tonic is drawn from, not the last session's when there is another: "
+            "C D E F G A B with # or b, or all")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="cordelia", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -27,7 +31,7 @@ def main(argv=None):
                    help=f"the degrees to ask, from {' '.join(degrees.SEMITONES)}; "
                         + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
     d.add_argument("--minutes", type=float)
-    d.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
+    d.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     d.add_argument("--bpm", type=float)
     d.add_argument("--voice", help="a `say -v ?` voice; 'default' = system voice")
     session_flags(d)
@@ -42,7 +46,7 @@ def main(argv=None):
                         "so 0 is steps only, 1 any other degree equally, 0.2 mostly steps with the odd third")
     m.add_argument("--hearings", type=int, help="times a melody is played before the answer")
     m.add_argument("--minutes", type=float)
-    m.add_argument("--key", help="tonic: C D E F G A B with # or b (default: random, not the last session's)")
+    m.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     m.add_argument("--bpm", type=float)
     m.add_argument("--singer", help=" | ".join(SINGERS))
     session_flags(m)
@@ -100,7 +104,7 @@ def commit():
 
 
 def session_flags(p):
-    p.epilog = "Every setting left out is the last session's of this drill; the key is random, not the last one."
+    p.epilog = "Every setting left out is the last session's of this drill, the --key list too."
     p.add_argument("--tag", help="tag this and every later session (sticky); 'none' clears")
     p.add_argument("--keep-wav", action="store_true", help="keep the session's WAV in data/sessions/")
     p.add_argument("--midi", metavar="FILE", help="also write the score as a MIDI file")
@@ -117,9 +121,9 @@ def tags(con, flag=None):
 
 def remember(a, defaults, last_config):
     """Every setting left off the command line is the last session's of the mode (the mode's
-    default before there is one), except the key, which a mode draws at random on purpose."""
+    default before there is one). The key is drawn from the remembered `--key` list."""
     for name, default in defaults.items():
-        if name != "key" and getattr(a, name) in (None, []):
+        if getattr(a, name) in (None, []):
             setattr(a, name, (last_config or {}).get(name, default))
 
 

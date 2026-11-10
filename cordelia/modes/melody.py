@@ -20,7 +20,7 @@ import random
 
 from ..score import Clip, Note, Score
 from ..voice import SYLLABLE, SungBank, sung_label
-from .degrees import FLAT_ROW, HOME_ROW, NOTE_NAMES, SEMITONES, parse_degrees, parse_key, random_key, short, tonic_midi
+from .degrees import FLAT_ROW, HOME_ROW, NOTE_NAMES, SEMITONES, draw_key, key_pool, parse_degrees, parse_key, short, tonic_midi
 
 NAME = "melody"
 
@@ -32,7 +32,7 @@ DEGREES = dict(SEMITONES, **{"8": 12})
 # spread ** (d - 1), so 0 is steps only and 1 is uniform over the other
 # degrees (never the same degree twice running; the first note is uniform);
 # hearings: how many times a melody is played before the answer.
-DEFAULTS = dict(minutes=5.0, key=None, bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, spread=0.2,
+DEFAULTS = dict(minutes=5.0, key_pool=["all"], bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, spread=0.2,
                 hearings=3, singer="jennifer")
 
 # A question, in beats: the melody, then two clicks and the melody again
@@ -204,9 +204,7 @@ def bank(config, data_dir):
 
 def configure(a, last_config, rng):
     """A session config from the parsed flags, or a SystemExit saying why not."""
-    pc = parse_key(a.key or random_key(rng, last_config and last_config.get("key")))
-    if pc is None:
-        raise SystemExit(f"--key {a.key!r} is not a note name")
+    pool = key_pool(a.key_pool)
     degrees, length, spread, hearings, bpm = parse_degrees(a.degrees, DEGREES), a.length, a.spread, a.hearings, a.bpm
     if len(degrees) < 2:
         raise SystemExit("a melody needs at least two degrees to move between")
@@ -218,7 +216,7 @@ def configure(a, last_config, rng):
         raise SystemExit("--spread is 0 (steps only) to 1 (any other degree, equally)")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=NOTE_NAMES[pc], bpm=bpm, degrees=list(degrees), length=length, spread=spread,
+    return dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=bpm, degrees=list(degrees), length=length, spread=spread,
                 hearings=hearings, singer=a.singer, keys=length)
 
 
