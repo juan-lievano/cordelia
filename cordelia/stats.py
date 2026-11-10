@@ -22,6 +22,9 @@ SHORT = 44            # a terminal with fewer lines than this gets half the rows
 PAD = 2               # columns between a box's edge and its contents
 NONE = "∅"            # the confusion matrix's column for questions with no answer
 RECENT = 500          # the confusion matrix covers this many of the latest questions: how the misses go now
+DOTS = 16             # a confusion cell is two braille cells, a 4x4 grid of dots that fill from the bottom up
+DOT = {(0, 0): 0x01, (0, 1): 0x02, (0, 2): 0x04, (0, 3): 0x40,     # (column, row from the top) -> braille bit
+       (1, 0): 0x08, (1, 1): 0x10, (1, 2): 0x20, (1, 3): 0x80}
 FIFTHS = ("C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F")       # the circle, clockwise from the top
 MINORS = ("a", "e", "b", "f#", "c#", "g#", "eb", "bb", "f", "c", "g", "d")       # each one's relative minor, spelt by its key signature
 INNER = (0.5, 0.5)    # the minors' ring, as a share of the majors' width and height
@@ -92,7 +95,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
     if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
         recent = ex_rows[-RECENT:]
         span = f"q: {n - len(recent) + 1}-{n}"
-        boxes = [box(f"confusion, {span}, rows asked, %", confusion_matrix(recent)),
+        boxes = [box(f"confusion, {span}, rows asked, ⣿⣿ = all", confusion_matrix(recent)),
                  box(f"{span}, %", recall_precision(recent))]
         room = len(hist.split("\n")[0]) - sum(len(b.split("\n")[0]) + 1 for b in boxes) - 2 - 2 * PAD
         if room >= 24:       # the width left beside the two boxes, under the histogram: the circle of fifths
@@ -166,8 +169,9 @@ def soft(text):
 
 
 def confusion_matrix(rows):
-    """Each row an asked label, the share of its answers (%) under each label,
-    ∅ for no answer. Rows and columns in the mode's LABELS order."""
+    """Each row an asked label, the share of its answers under each label as a
+    cell of dots (DOTS = all of them; any at all lights one), ∅ for no answer.
+    Rows and columns in the mode's LABELS order."""
     labels = asked_labels(rows)
     given = {r["answer"] for r in rows} - set(labels) - {None, "pass"}    # answered though never asked
     answers = labels + sorted(given, key=lambda l: (l in MODES[rows[0]["mode"]].LABELS, l)) + [NONE]
@@ -178,8 +182,19 @@ def confusion_matrix(rows):
         for r in asked:
             a = r["answer"] if r["answer"] not in (None, "pass") else NONE   # passes, before 2026-11-03
             counts[a] = counts.get(a, 0) + 1
-        matrix.append([l] + [pct(counts[a], len(asked)) for a in answers])
+        matrix.append([l] + [dots(counts[a], len(asked)) for a in answers])
     return table([""] + answers, matrix, dividers=(0, len(answers) - 1))     # labels | answers | ∅
+
+
+def dots(part, whole):
+    """Two braille cells side by side, part/whole of their DOTS lit from the
+    bottom row up, left to right; an empty pair for none."""
+    lit = math.ceil(DOTS * part / whole) if part else 0
+    order = [(c, r) for r in (3, 2, 1, 0) for c in range(4)][:lit]
+    cells = [0, 0]
+    for c, r in order:
+        cells[c // 2] |= DOT[(c % 2, r)]
+    return "".join(chr(0x2800 + b) for b in cells)
 
 
 def circle(width, height):
