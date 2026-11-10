@@ -20,7 +20,7 @@ import random
 
 from ..score import Clip, Note, Score
 from ..voice import SYLLABLE, SungBank, sung_label
-from .degrees import HOME_ROW, NOTE_NAMES, SEMITONES, parse_degrees, parse_key, random_key, tonic_midi
+from .degrees import HOME_ROW, NOTE_NAMES, SEMITONES, parse_degrees, parse_key, random_key, short, tonic_midi
 
 NAME = "melody"
 
@@ -77,20 +77,20 @@ def keymap():
     return km
 
 
-def recipe(config):
-    """The exercise as words: the list, then the rest. Sessions before
+def recipe(config, brief=False):
+    """The exercise as words: the list (`brief`: by its scale's name), then the rest. Sessions before
     2026-11-08 had `step`, the share of moves to a neighbour, the rest uniform
     with repeats; the first (2026-11-03) drew every move uniformly."""
     if "spread" in config:
         moves = f"spread {config['spread']:g}"
     else:
         moves = "any move" if config["step"] is None else f"step {config['step']:g}"
-    return (" ".join(config["degrees"]), f"{config['length']} notes, {moves}, heard {config['hearings']}x")
+    return ((short if brief else " ".join)(config["degrees"]), f"{config['length']} notes, {moves}, heard {config['hearings']}x")
 
 
-def exercise(config):
+def exercise(config, brief=False):
     """What the session drilled, after the mode name in the stats."""
-    return recipe(config)
+    return recipe(config, brief)
 
 
 def describe(config):

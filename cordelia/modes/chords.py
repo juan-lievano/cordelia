@@ -88,7 +88,7 @@ def spoken(level):
     return {q: QUALITIES[q][1] for q in LEVELS[level]["qualities"]}
 
 
-def exercise(config):
+def exercise(config, brief=False):
     """What the session drilled, after the mode name in the stats: its level."""
     return (str(config["level"]),)
 

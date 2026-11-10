@@ -136,9 +136,20 @@ def degrees_of(config):
     return OLD_SCALES[config.get("scale", "major")]
 
 
-def exercise(config):
-    """What the session drilled, after the mode name in the stats: its degree list."""
-    return (" ".join(degrees_of(config)),)
+def short(degrees):
+    """A list as the scale it holds whole and whatever else it has (`minor 8`, `major b7`), the
+    scale that leaves the least over; as it is when it holds neither whole. For a title: the
+    stored list stays the full one."""
+    whole = [(name, [d for d in degrees if d not in scale]) for name, scale in SHORTHANDS.items() if set(scale) <= set(degrees)]
+    if not whole:
+        return " ".join(degrees)
+    name, rest = min(whole, key=lambda w: len(w[1]))
+    return " ".join([name, *rest])
+
+
+def exercise(config, brief=False):
+    """What the session drilled, after the mode name in the stats: its degree list (`brief`: by its scale's name)."""
+    return ((short if brief else " ".join)(degrees_of(config)),)
 
 
 def spoken(degrees):

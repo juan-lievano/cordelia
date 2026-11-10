@@ -53,12 +53,13 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
     return rows
 
 
-def exercise(mode, cfg):
+def exercise(mode, cfg, brief=False):
     """What is being drilled: the mode and what its module says (the degree
     list, the level; for melody the list, then the rest of the recipe after a
-    dot). A mode this version no longer has falls back to its level."""
+    dot). A mode this version no longer has falls back to its level. `brief`
+    names a list by its scale (`minor 8`), for a title; rows are grouped by the full one."""
     m = MODES.get(mode)
-    parts = m.exercise(cfg) if m else ([str(cfg["level"])] if cfg.get("level") is not None else [])
+    parts = m.exercise(cfg, brief) if m else ([str(cfg["level"])] if cfg.get("level") is not None else [])
     return " · ".join([" ".join([mode, *parts[:1]]), *parts[1:]])
 
 
@@ -83,14 +84,15 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
     ex = rows[-1]["exercise"]
     ex_rows = [r for r in rows if r["exercise"] == ex]
     n = len(ex_rows)
-    per_bar = "a bar per q" if n <= BARS else f"each bar the mean of ~{n / BARS:.0f}"
+    bars = bar_count(n)
+    per_bar = "a bar per q" if n <= bars else f"each bar the mean of ~{n / bars:.0f}"
     right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
-    title = f"{ex} · {n} q · {right:.0f}% right · {per_bar}"
+    title = f"{exercise(ex_rows[-1]['mode'], ex_rows[-1]['config'], brief=True)} · {n} q · {right:.0f}% right · {per_bar}"
     trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
     if trend is not None:
         b, se = trend
-        title += f" · trend {100 * b:+.1f} ± {100 * se:.1f} pp / 100 q"
-    hist = box(title, histogram(ex_rows))
+        title += f" · trend {sig2(100 * b, '+')} ± {sig2(100 * se)} pp / 100 q"
+    hist = box(title, histogram(ex_rows, bars))
     blocks = [hist]
     if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
         recent = ex_rows[-RECENT:]
@@ -100,13 +102,42 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
         room = len(hist.split("\n")[0]) - sum(len(b.split("\n")[0]) + 1 for b in boxes) - 2 - 2 * PAD
         if room >= 24:       # the width left beside the two boxes, under the histogram: the circle of fifths
             boxes.append(box("", circle(room, len(boxes[0].split("\n")) - 4)))
-        blocks.append(beside(boxes))
+        fits = sum(len(b.split("\n")[0]) + 1 for b in boxes) - 1 <= columns()
+        blocks += [beside(boxes)] if fits else boxes       # a narrow terminal: one under the other
     print("\n" + soft("\n\n".join(centred(b) for b in blocks)) + "\n")
 
 
+def columns():
+    """The terminal's width; no limit when piped."""
+    return shutil.get_terminal_size().columns if sys.stdout.isatty() else 10 ** 6
+
+
+def sig2(x, sign=""):
+    """x to two significant figures, written out: -104.5 is -100, 0.4321 is 0.43."""
+    if not x:
+        return "0"
+    places = 1 - math.floor(math.log10(abs(x)))
+    return f"{round(x, places):{sign}.{max(places, 0)}f}"
+
+
 def box(title, body):
-    """The body in a rounded box with the title, if any, set into its top edge."""
+    """The body in a rounded box with the title, if any, set into its top edge. A title may
+    widen the box as far as the terminal; the parts (split at " · ") that still do not fit
+    go on lines of their own inside, above the body."""
     lines = body.split("\n")
+    room = max(max(len(l) for l in lines) + 2 * PAD, columns() - 2)     # widest the inside may get
+    parts, rest = title.split(" · "), []
+    while len(parts) > 1 and len(" · ".join(parts)) + 5 > room:
+        rest.insert(0, parts.pop())
+    title = " · ".join(parts)[:room - 5]
+    if rest:
+        wrapped = [rest.pop(0)]
+        for part in rest:
+            if len(wrapped[-1]) + 3 + len(part) <= room - 2 * PAD:
+                wrapped[-1] += " · " + part
+            else:
+                wrapped.append(part)
+        lines = [*wrapped, "", *lines]
     width = max(max(len(l) for l in lines) + 2 * PAD, len(title) + 5 if title else 0)   # "╭─ title ──╮", unpadded
     top = ("╭─ " + title + " " + "─" * (width - len(title) - 3) if title else "╭" + "─" * width) + "╮"
     mid = ["│" + " " * PAD + l.ljust(width - 2 * PAD) + " " * PAD + "│" for l in ["", *lines, ""]]
@@ -144,10 +175,15 @@ def slope(xs, ys):
     return b, math.sqrt(rss / (n - 2) / sxx)
 
 
-def histogram(rows):
-    """right% per question, or per group once there are more than BARS, oldest left. A melody is right only whole."""
+def bar_count(n):
+    """A bar per question up to BARS, fewer where the terminal is too narrow for that many."""
+    fit = (columns() - 2 - 2 * PAD - 7) // (BAR + 1)      # the box's edges and padding, "100 │ " and a column of slack
+    return max(1, min(n, BARS, fit))
+
+
+def histogram(rows, bars):
+    """right% per question, or per group once there are more questions than bars, oldest left. A melody is right only whole."""
     n = len(rows)
-    bars = min(n, BARS)
     bins = [[] for _ in range(bars)]
     for i, r in enumerate(rows):
         bins[i * bars // n].append(r)
