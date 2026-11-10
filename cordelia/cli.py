@@ -34,6 +34,7 @@ def main(argv=None):
     d.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     d.add_argument("--bpm", type=float)
     d.add_argument("--voice", help="a `say -v ?` voice; 'default' = system voice")
+    d.add_argument("--answer", help="spoken: the degree said, then the note again; sung: its syllable sung on the note")
     session_flags(d)
 
     m = sub.add_parser("melody", help="short melodies over a drone, sung back after each")
@@ -169,9 +170,12 @@ def cmd_session(mode, a):
         hint_width = max(len(l) for h in hint for l in h.split("\n"))
         lines = with_panel(settings_table(rows, width).split("\n"), text_width, hint_width, width)
         body = "\n".join(lines + [""] + hint)
-        warning = stats.box("UNCOMMITTED CHANGES", "this session is recorded with `commit: null`, "
-                            "nothing says what code produced it") + "\n" if config["commit"] is None else ""
-        screen = stats.centred(warning + stats.box(title, body))
+        session = stats.box(title, body)
+        inner = len(session.split("\n")[0]) - 2 - 2 * stats.PAD      # the warning matches the session box's width
+        warning = stats.box("UNCOMMITTED CHANGES", "\n".join(
+            l.ljust(inner) for l in textwrap.wrap("this session is recorded with `commit: null`, "
+                                                  "nothing says what code produced it", inner))) + "\n" if config["commit"] is None else ""
+        screen = stats.centred(warning + session)
         show = panel_writer(screen, text_width)
         print("\r\x1b[K\n" + screen.replace(PANEL, " ") + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]

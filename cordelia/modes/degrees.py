@@ -3,7 +3,9 @@
 The session opens with the tonic, the fifth and the tonic an octave up, so
 the key is set in the ear before anything is asked. Each question: the note sounds for two beats, two beats of silence to
 answer in, then the voice says the degree, the note sounds again, and a
-beat of rest. The right answer is always given, nothing is ever judged out
+beat of rest. With `--answer sung` the voice and the note again are one
+thing instead: the degree's solfege syllable sung on the question's pitch,
+and no rest after it. The right answer is always given, nothing is ever judged out
 loud, and the register varies so that the degree, not the pitch, is what
 is being asked.
 
@@ -18,7 +20,7 @@ import math
 import random
 
 from ..score import Clip, Note, Score
-from ..voice import VoiceBank
+from ..voice import SYLLABLE, SungBank, VoiceBank, sung_label
 
 NAME = "degrees"
 
@@ -63,7 +65,10 @@ CADENCE_REST_BEATS = 2         # after the last one, before the first question
 OUTRO_SECONDS = 2.0            # drone alone after the last answer, fading out
 RING = 0.25                    # a note rings this long past its beats
 
-DEFAULTS = dict(minutes=4.0, key_pool=["all"], bpm=50.0, degrees=SHORTHANDS["major"], voice="default")
+DEFAULTS = dict(minutes=4.0, key_pool=["all"], bpm=50.0, degrees=SHORTHANDS["major"], voice="default", answer="spoken")
+ANSWERS = ("spoken", "sung")   # the word then the note again, or the syllable sung on the note
+SINGER = "jennifer"            # the sung answer's voice, the melody mode's default singer
+SUNG_LEVEL = 1.3               # as loud as the melody mode's sung answers
 MIN_BPM, MAX_BPM = 20, 240
 
 # Sessions before 2026-11-05 had a scale instead of a list and stored a degree
@@ -188,11 +193,17 @@ def key_text(config):
 def settings(config):
     """The session's settings for its box, as (name, value) rows."""
     return [("key", key_text(config)), ("degrees", " ".join(degrees_of(config))),
-            ("tempo", f"{config['bpm']:g} BPM"), ("voice", config.get("voice", "default"))]
+            ("tempo", f"{config['bpm']:g} BPM"),
+            ("voice", SINGER + ", sung" if config.get("answer") == "sung" else config.get("voice", "default"))]
 
 
 def bank(config, data_dir):
-    """The spoken bank, with every degree the session can ask for."""
+    """The spoken bank, or the sung one, with every answer the session can give."""
+    if config.get("answer") == "sung":
+        b = SungBank(SINGER, data_dir)
+        b.ensure([sung_label(d, tonic_midi(parse_key(config["key"])) + SEMITONES[d] + 12 * o)
+                  for (d, o), _ in pool(degrees_of(config))])
+        return b
     b = VoiceBank(config.get("voice", "default"), data_dir)
     b.ensure(spoken(degrees_of(config)))
     return b
@@ -204,12 +215,18 @@ def configure(a, last_config, rng):
     degrees = parse_degrees(a.degrees)
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
+    if a.answer not in ANSWERS:
+        raise SystemExit(f"--answer is {' or '.join(ANSWERS)}")
     return dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=a.bpm, degrees=list(degrees),
-                voice=a.voice, keys=1)
+                voice=a.voice, answer=a.answer, keys=1)
 
 
 def hint(config, width):
-    return f"keys 1-9 or {HOME_ROW}uy (8 is 1, 9 is 2); flat: the key twice or shifted (33 or > is b3)"
+    """The keys, and with a sung answer each asked degree's syllable."""
+    keys = f"keys 1-9 or {HOME_ROW}uy\nflat: the key twice or shifted"
+    if config.get("answer") != "sung":
+        return keys
+    return keys + "\nsung: " + "  ".join(f"{d} {SYLLABLE[d]}" for d in degrees_of(config))
 
 
 def status(current, n, typed, config):
@@ -220,6 +237,7 @@ class Builder:
     def __init__(self, config, bank):
         self.config = config
         self.bank = bank
+        self.sung = config.get("answer") == "sung"
         self.beat = 60.0 / config["bpm"]
         self.tonic = tonic_midi(parse_key(config["key"]))
         self.score = Score(drone={"midi": self.tonic - 24}, voice=bank.name)   # the root two octaves under the tonic
@@ -227,14 +245,21 @@ class Builder:
     def midi(self, label, octave):
         return self.tonic + SEMITONES[label] + 12 * octave
 
+    def answer_beats(self, clip):
+        return max(1, math.ceil(self.bank.seconds(clip) / self.beat))
+
     def phrase(self, t, label, octave):
         """Question at t. Returns (window_end, next_t)."""
         beat = self.beat
         midi, level = self.midi(label, octave), OCTAVE_LEVELS[octave]
         self.score.notes.append(Note(t, NOTE_BEATS * beat + RING, midi, level))
         voice_t = t + (NOTE_BEATS + PAUSE_BEATS) * beat
+        if self.sung:
+            clip = sung_label(label, midi)
+            self.score.clips.append(Clip(voice_t, clip, SUNG_LEVEL))
+            return voice_t, voice_t + self.answer_beats(clip) * beat   # no rest: the sung note's fade is the gap
         self.score.clips.append(Clip(voice_t, label))
-        voice_beats = max(1, math.ceil(self.bank.seconds(label) / beat))
+        voice_beats = self.answer_beats(label)
         again = voice_t + voice_beats * beat
         self.score.notes.append(Note(again, AGAIN_BEATS * beat + RING, midi, level))
         return voice_t, again + (AGAIN_BEATS + REST_BEATS) * beat
@@ -249,9 +274,11 @@ class Builder:
         return t + CADENCE_REST_BEATS * beat
 
     def max_phrase(self):
-        longest = max(self.bank.seconds(l) for l in degrees_of(self.config))
-        return (NOTE_BEATS + PAUSE_BEATS + max(1, math.ceil(longest / self.beat))
-                + AGAIN_BEATS + REST_BEATS) * self.beat
+        if self.sung:
+            longest = max(self.answer_beats(sung_label(d, self.midi(d, o))) for (d, o), _ in pool(degrees_of(self.config)))
+            return (NOTE_BEATS + PAUSE_BEATS + longest) * self.beat
+        longest = max(self.answer_beats(l) for l in degrees_of(self.config))
+        return (NOTE_BEATS + PAUSE_BEATS + longest + AGAIN_BEATS + REST_BEATS) * self.beat
 
 
 def pool(degrees):

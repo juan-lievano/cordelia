@@ -10,6 +10,9 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `--key D Eb E F F#`                    | keys to draw from, not the last (last; all)     |
 |                | `--bpm 40`                             | tempo (last; 50)                                |
 |                | `--voice Samantha`                     | any `say -v ?` voice (last; system)             |
+|                | `--answer sung`                        | syllable sung on the note; `spoken` (last; spoken) |
+|                | &nbsp;solfege | 1 do · 2 re · 3 mi · 4 fa · 5 so · 6 la · 7 ti |
+|                | &nbsp;flats | b2 ga · b3 nu · b5 jur · b6 ki · b7 pe         |
 |                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
 |                | &nbsp;flat | twice (`33`) or shifted (`>`) = b3; `333` = 3   |
 |                | &nbsp;counts | the last key before the voice                   |
