@@ -7,6 +7,7 @@ journal's.
 
 import json
 import math
+import re
 import shutil
 import sys
 
@@ -15,7 +16,7 @@ from .modes.degrees import degrees_of, parse_degrees
 
 BARS = 40             # most bars; past that many questions, that many groups
 BAR = 2               # columns wide
-FILL = "▓"            # dark shade: a full block is too bright in a light font
+RAMP = " ▁▂▃▄▅▆▇█"    # a cell filled by eighths from the bottom: the top of a bar lands within an eighth of a row
 ROWS = 20             # rows of the histogram, 100% / ROWS each; labelled every 10%
 SHORT = 44            # a terminal with fewer lines than this gets half the rows, so a report fits
 PAD = 2               # columns between a box's edge and its contents
@@ -97,7 +98,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
         if room >= 24:       # the width left beside the two boxes, under the histogram: the circle of fifths
             boxes.append(box("", circle(room, len(boxes[0].split("\n")) - 4)))
         blocks.append(beside(boxes))
-    print("\n" + "\n\n".join(centred(b) for b in blocks) + "\n")
+    print("\n" + soft("\n\n".join(centred(b) for b in blocks)) + "\n")
 
 
 def box(title, body):
@@ -152,11 +153,16 @@ def histogram(rows):
     rows_ = ROWS if shutil.get_terminal_size(fallback=(0, SHORT)).lines >= SHORT else ROWS // 2   # piped: tall
     for level in range(rows_, 0, -1):
         y = level * 100 / rows_
-        cells = [FILL * BAR if p is not None and p >= y - 1e-9 else " " * BAR for p in pcts]
+        cells = [RAMP[0 if p is None else round(8 * min(1, max(0, p * rows_ / 100 - level + 1)))] * BAR for p in pcts]
         lines.append(f"{y:>3.0f}" if y % 10 == 0 else "   ") 
         lines[-1] += " │ " + " ".join(cells)
     lines.append("    └─" + "─" * ((BAR + 1) * bars - 1) + " ")   # one column of slack keeps the edge off the bars
     return "\n".join(lines)
+
+
+def soft(text):
+    """The bars in the terminal's dim colour, plain when piped: a block at full strength is too bright in a light font."""
+    return re.sub("[▁-█]+", lambda m: f"\x1b[2m{m[0]}\x1b[22m", text) if sys.stdout.isatty() else text
 
 
 def confusion_matrix(rows):
