@@ -236,7 +236,7 @@ def status(current, n, typed, config):
     slots = ["_"] * config["keys"]
     for i, k in enumerate(typed):
         slots[i] = k
-    return f"question {current}/{n}   [{' '.join(slots)}]"
+    return f"{current} / {n}   [{' '.join(slots)}]"
 
 
 def build_session(config, bank, rng=None):

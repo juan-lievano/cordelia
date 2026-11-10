@@ -16,9 +16,11 @@ import tty
 ESC = "\x1b"
 
 
-def collect(wav_path, ask_ms, status=None):
+def collect(wav_path, ask_ms, status=None, show=None):
     """Returns (keystrokes, outcome, stopped_at_ms).
 
+    `status(current, n, typed)` is the text for the question on now and the keys typed for it,
+    `show(text)` puts it on the screen (default: a line of its own, after "question ").
     keystrokes: [(t_ms, key)] with t_ms counted from the moment playback was
     started. outcome is 'completed' when the audio ran to its end, 'stopped'
     on Esc, 'interrupted' on Ctrl+C (the caller saves it as stopped, then
@@ -54,10 +56,11 @@ def collect(wav_path, ask_ms, status=None):
                 typed, dirty = [], True             # a new question: the echoed keys reset
             if dirty:
                 shown, dirty = current, False
-                line = f"question {current}/{len(ask_ms)}"
-                if status:
-                    line = status(current, len(ask_ms), typed)
-                sys.stdout.write("\r\x1b[K" + line)
+                line = status(current, len(ask_ms), typed) if status else f"{current} / {len(ask_ms)}"
+                if show:
+                    show(line)
+                else:
+                    sys.stdout.write("\r\x1b[Kquestion " + line)
                 sys.stdout.flush()
             ready, _, _ = select.select([sys.stdin], [], [], 0.05)
             if not ready:

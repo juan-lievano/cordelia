@@ -162,13 +162,20 @@ def cmd_session(mode, a):
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions"),
                 ("tags", ", ".join(tg) or "none")]
-        body = settings_table(rows, width) + "\n\n" + "\n".join(textwrap.fill(l, width) for l in mode.hint(config, width).split("\n"))
+        status = lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap, config["keys"]), config)  # noqa: E731
+        text_width = max(len(mode.status(len(items), len(items), [label] * config["keys"], config))
+                         for label in set(keymap.values()))
+        hint = [textwrap.fill(l, width) for l in mode.hint(config, width).split("\n")]
+        hint_width = max(len(l) for h in hint for l in h.split("\n"))
+        lines = with_panel(settings_table(rows, width).split("\n"), text_width, hint_width, width)
+        body = "\n".join(lines + [""] + hint)
         warning = stats.box("UNCOMMITTED CHANGES", "this session is recorded with `commit: null`, "
                             "nothing says what code produced it") + "\n" if config["commit"] is None else ""
-        print("\r\x1b[K\n" + stats.centred(warning + stats.box(title, body)) + "\n")
+        screen = stats.centred(warning + stats.box(title, body))
+        show = panel_writer(screen, text_width)
+        print("\r\x1b[K\n" + screen.replace(PANEL, " ") + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
-        keystrokes, outcome, stopped_at = collect(
-            wav, ask_ms, status=lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap, config["keys"]), config))
+        keystrokes, outcome, stopped_at = collect(wav, ask_ms, status=status, show=show)
         interrupted = outcome == "interrupted"
         outcome = "stopped" if interrupted else outcome
         store.add_keystrokes(con, sid, keystrokes)
@@ -185,6 +192,37 @@ def cmd_session(mode, a):
             os.rmdir(tmpdir)
     if interrupted:
         die_of_interrupt()
+
+
+PANEL = "\ue000"   # marks where the question panel's text starts, until the screen is printed
+
+
+def with_panel(rows, text_width, right, room):
+    """The settings rows with a small box at the right of the first three, for the question
+    and the keys typed, its right edge at `right` (or just past the rows) and not past `room`;
+    the rows unchanged when there is no room for it beside them."""
+    inner = text_width + 4
+    panel = ["╭─ question " + "─" * (inner - 11) + "╮", "│  " + PANEL + " " * (text_width - 1) + "  │",
+             "╰" + "─" * inner + "╯"]
+    at = max(max(len(r) for r in rows[:3]) + 4, right - len(panel[0]))
+    if len(rows) < 3 or at + len(panel[0]) > room:
+        return rows
+    return [r.ljust(at) + panel[i] if i < 3 else r for i, r in enumerate(rows)]
+
+
+def panel_writer(screen, text_width):
+    """A function that writes the question panel's text into the printed screen (the cursor
+    two lines under it), or None when the screen has no panel."""
+    lines = screen.split("\n")
+    for j, line in enumerate(lines):
+        col = line.find(PANEL)
+        if col >= 0:
+            up = len(lines) + 1 - j
+            def show(text):
+                sys.stdout.write(f"\x1b[{up}A\r" + (f"\x1b[{col}C" if col else "") + text[:text_width].ljust(text_width)
+                                 + f"\x1b[{up}B\r")
+            return show
+    return None
 
 
 def settings_table(rows, width):

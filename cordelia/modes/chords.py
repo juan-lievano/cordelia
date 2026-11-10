@@ -127,7 +127,7 @@ def hint(config, width):
 
 def status(current, n, typed, config):
     answer = f"{QUALITIES[typed[-1]][2]} ({typed[-1]})" if typed else " "
-    return f"question {current}/{n}   [{answer}]"
+    return f"{current} / {n}   [{answer}]"
 
 
 def voicing(root, quality, open_):

@@ -213,7 +213,7 @@ def hint(config, width):
 
 
 def status(current, n, typed, config):
-    return f"question {current}/{n}   [{typed[-1] if typed else ' '}]"
+    return f"{current} / {n}   [{typed[-1] if typed else ' '}]"
 
 
 class Builder:
