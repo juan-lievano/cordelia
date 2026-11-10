@@ -180,7 +180,15 @@ for comparing degrees, not for absolute numbers.
 `stats` reports the exercise of the last session played: a histogram of
 right% over its questions in the order they were asked, the trend with its
 standard error, and for degrees and chords the confusion matrix and the
-recall and precision of each answer over the latest 500 questions.
+recall and precision of each answer over the latest 500 questions. The
+histogram has as many bars as the terminal is wide, 60 at most. The matrix
+has a column for each label asked and one for no answer, where an answer
+outside the labels asked (a slip of the hand) is counted too; each cell is
+a block of braille dots scattered as densely as the share of that answer
+(any answer at all lights a dot, so an empty cell means never), twice as
+tall where the terminal has the height. Recall and precision are
+a pair of upright bars for each label, recall first; the circle of fifths
+sits in whatever width is left.
 `--mode`, `--degrees`, `--key` and `--tag` pick a different last session,
 so that harder settings don't read as regression. An exercise is its mode
 and its content (the degree list, the melody recipe, the chords level), and

@@ -1,12 +1,15 @@
 """How the last exercise played is going: a histogram of right% over the
 questions answered so far in the order they were asked (one bar per question
-up to BARS questions, then BARS equal groups), and, for a mode whose answers
-are single labels (LABELS), the confusion matrix. Minutes practised are the
-journal's.
+up to as many bars as fit, BARS at most, then that many equal groups), and, for
+a mode whose answers are single labels (LABELS), the confusion matrix and each
+label's recall and precision as a pair of bars, with the circle of fifths in
+the width left over. A terminal with the height gets the matrix's cells two
+lines tall. Minutes practised are the journal's.
 """
 
 import json
 import math
+import random
 import re
 import shutil
 import sys
@@ -14,7 +17,7 @@ import sys
 from .modes import MODES
 from .modes.degrees import degrees_of, parse_degrees
 
-BARS = 40             # most bars; past that many questions, that many groups
+BARS = 60             # most bars, where the terminal is wide enough; past that many questions, that many groups
 BAR = 2               # columns wide
 RAMP = " ▁▂▃▄▅▆▇█"    # a cell filled by eighths from the bottom: the top of a bar lands within an eighth of a row
 ROWS = 20             # rows of the histogram, 100% / ROWS each; labelled every 10%
@@ -22,12 +25,16 @@ SHORT = 44            # a terminal with fewer lines than this gets half the rows
 PAD = 2               # columns between a box's edge and its contents
 NONE = "∅"            # the confusion matrix's column for questions with no answer
 RECENT = 500          # the confusion matrix covers this many of the latest questions: how the misses go now
-DOTS = 16             # a confusion cell is two braille cells, a 4x4 grid of dots that fill from the bottom up
-DOT = {(0, 0): 0x01, (0, 1): 0x02, (0, 2): 0x04, (0, 3): 0x40,     # (column, row from the top) -> braille bit
-       (1, 0): 0x08, (1, 1): 0x10, (1, 2): 0x20, (1, 3): 0x80}
+CELL = 4              # a confusion cell is this many braille characters wide, its dots scattered
+BIG = 2               # and this many lines tall where the terminal has the height (64 dots), one line where not (32)
+BRIGHT = " " + "".join(chr(0xE000 + i) for i in range(1, 9))   # RAMP's blocks under private codes: drawn at full strength, not dimmed
+LOW = 9               # fewest lines inside the boxes under the histogram: a few labels still get bars and a circle with room
+PAIR = 3              # columns between one label's pair of recall and precision bars and the next
 FIFTHS = ("C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F")       # the circle, clockwise from the top
 MINORS = ("a", "e", "b", "f#", "c#", "g#", "eb", "bb", "f", "c", "g", "d")       # each one's relative minor, spelt by its key signature
 INNER = (0.5, 0.5)    # the minors' ring, as a share of the majors' width and height
+DOT = {(0, 0): 0x01, (0, 1): 0x02, (0, 2): 0x04, (0, 3): 0x40,     # (column, row from the top) -> braille bit
+       (1, 0): 0x08, (1, 1): 0x10, (1, 2): 0x20, (1, 3): 0x80}
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
@@ -97,11 +104,15 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
     if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
         recent = ex_rows[-RECENT:]
         span = f"q: {n - len(recent) + 1}-{n}"
-        boxes = [box(f"confusion, {span}, rows asked", confusion_matrix(recent)),
-                 box(f"{span}, %", recall_precision(recent))]
+        labels, counts = tally(recent)
+        big = lines() >= len(hist.split("\n")) + max(BIG * len(labels) + 2, LOW) + 4 + 4     # both boxes, the blank lines, the prompt
+        body = confusion_matrix(labels, counts, big)
+        height = max(body.count("\n") + 1, LOW)                     # the three boxes are as tall as the matrix, LOW at least
+        matrix = box(f"confusion, {span}, rows asked", body + "\n" * (height - body.count("\n") - 1))
+        boxes = [matrix, box(f"recall, then precision, % · {span}", pairs(labels, counts, height))]
         room = len(hist.split("\n")[0]) - sum(len(b.split("\n")[0]) + 1 for b in boxes) - 2 - 2 * PAD
         if room >= 24:       # the width left beside the two boxes, under the histogram: the circle of fifths
-            boxes.append(box("", circle(room, len(boxes[0].split("\n")) - 4)))
+            boxes.append(box("", circle(room, height)))
         fits = sum(len(b.split("\n")[0]) + 1 for b in boxes) - 1 <= columns()
         blocks += [beside(boxes)] if fits else boxes       # a narrow terminal: one under the other
     print("\n" + soft("\n\n".join(centred(b) for b in blocks)) + "\n")
@@ -110,6 +121,11 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
 def columns():
     """The terminal's width; no limit when piped."""
     return shutil.get_terminal_size().columns if sys.stdout.isatty() else 10 ** 6
+
+
+def lines():
+    """The terminal's height; no limit when piped."""
+    return shutil.get_terminal_size().lines if sys.stdout.isatty() else 10 ** 6
 
 
 def sig2(x, sign=""):
@@ -188,49 +204,62 @@ def histogram(rows, bars):
     for i, r in enumerate(rows):
         bins[i * bars // n].append(r)
     pcts = [100 * sum(1 for r in b if r["correct"] == 1) / len(b) if b else None for b in bins]
-    lines = []
-    rows_ = ROWS if shutil.get_terminal_size(fallback=(0, SHORT)).lines >= SHORT else ROWS // 2   # piped: tall
+    out = []
+    rows_ = ROWS if lines() >= SHORT else ROWS // 2
     for level in range(rows_, 0, -1):
         y = level * 100 / rows_
         cells = [RAMP[0 if p is None else round(8 * min(1, max(0, p * rows_ / 100 - level + 1)))] * BAR for p in pcts]
-        lines.append(f"{y:>3.0f}" if y % 10 == 0 else "   ") 
-        lines[-1] += " │ " + " ".join(cells)
-    lines.append("    └─" + "─" * ((BAR + 1) * bars - 1) + " ")   # one column of slack keeps the edge off the bars
-    return "\n".join(lines)
+        out.append((f"{y:>3.0f}" if y % 10 == 0 else "   ") + " │ " + " ".join(cells))
+    out.append("    └─" + "─" * ((BAR + 1) * bars - 1) + " ")   # one column of slack keeps the edge off the bars
+    return "\n".join(out)
 
 
 def soft(text):
-    """The bars in the terminal's dim colour, plain when piped: a block at full strength is too bright in a light font."""
-    return re.sub("[▁-█]+", lambda m: f"\x1b[2m{m[0]}\x1b[22m", text) if sys.stdout.isatty() else text
+    """The bars in the terminal's dim colour, plain when piped: a block at full strength is too
+    bright in a light font. The BRIGHT ones become plain blocks here, after the dimming."""
+    if sys.stdout.isatty():
+        text = re.sub("[▁-█]+", lambda m: f"\x1b[2m{m[0]}\x1b[22m", text)
+    return text.translate(str.maketrans(BRIGHT[1:], RAMP[1:]))
 
 
-def confusion_matrix(rows):
-    """Each row an asked label, the share of its answers under each label as a
-    cell of dots (DOTS = all of them; any at all lights one), ∅ for no answer.
-    Rows and columns in the mode's LABELS order."""
-    labels = asked_labels(rows)
-    given = {r["answer"] for r in rows} - set(labels) - {None, "pass"}    # answered though never asked
-    answers = labels + sorted(given, key=lambda l: (l in MODES[rows[0]["mode"]].LABELS, l)) + [NONE]
+def tally(rows):
+    """The labels asked, in the mode's LABELS order, and for each how often every one of them
+    was the answer. An answer that is none of them (a slip of the hand; a pass, before
+    2026-11-03) counts with no answer, under NONE."""
+    order = list(MODES[rows[0]["mode"]].LABELS)
+    labels = sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
+    counts = {l: dict.fromkeys([*labels, NONE], 0) for l in labels}
+    for r in rows:
+        counts[r["truth"]][r["answer"] if r["answer"] in labels else NONE] += 1
+    return labels, counts
+
+
+def confusion_matrix(labels, counts, big):
+    """Each row an asked label, the share of its answers under each label as a cell of dots
+    (all lit = all of them; any at all lights one, so an empty cell is never), ∅ for no
+    answer. A `big` cell is BIG lines tall, a small one a single line."""
     matrix = []
     for l in labels:
-        asked = [r for r in rows if r["truth"] == l]
-        counts = {a: 0 for a in answers}
-        for r in asked:
-            a = r["answer"] if r["answer"] not in (None, "pass") else NONE   # passes, before 2026-11-03
-            counts[a] = counts.get(a, 0) + 1
-        matrix.append([l] + [dots(counts[a], len(asked)) for a in answers])
-    return table([""] + answers, matrix, dividers=(0, len(answers) - 1))     # labels | answers | ∅
+        asked = sum(counts[l].values())
+        cells = [scatter(n, asked, BIG if big else 1, f"{l}/{a}") for a, n in counts[l].items()]
+        matrix += [[l if i == 0 else ""] + [c[i] for c in cells] for i in range(len(cells[0]))]
+    return table(["", *labels, NONE], matrix, dividers=(0, len(labels)))      # labels | answers | ∅
 
 
-def dots(part, whole):
-    """Two braille cells side by side, part/whole of their DOTS lit from the
-    bottom row up, left to right; an empty pair for none."""
-    lit = math.ceil(DOTS * part / whole) if part else 0
-    order = [(c, r) for r in (3, 2, 1, 0) for c in range(4)][:lit]
-    cells = [0, 0]
-    for c, r in order:
-        cells[c // 2] |= DOT[(c % 2, r)]
-    return "".join(chr(0x2800 + b) for b in cells)
+def scatter(part, whole, rows, seed):
+    """A cell CELL characters by `rows` lines, part/whole of its dots lit: dealt out to its characters evenly, give or
+    take one, then at random inside each, so the cell reads as one even density. `seed`
+    fixes the draw: a cell looks the same every run and changes only with its share."""
+    chars = CELL
+    rng = random.Random(seed)
+    lit = math.ceil(8 * chars * rows * part / whole) if part else 0
+    order = list(range(chars * rows))
+    rng.shuffle(order)
+    cells = [0] * (chars * rows)
+    for i, c in enumerate(order):
+        for bit in rng.sample(sorted(DOT.values()), lit // len(cells) + (i < lit % len(cells))):
+            cells[c] |= bit
+    return ["".join(chr(0x2800 + b) for b in cells[r * chars:(r + 1) * chars]) for r in range(rows)]
 
 
 def circle(width, height):
@@ -250,22 +279,25 @@ def circle(width, height):
     return "\n".join("".join(r) for r in grid)
 
 
-def asked_labels(rows):
-    """The labels asked, in the mode's LABELS order."""
-    order = list(MODES[rows[0]["mode"]].LABELS)
-    return sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
+def pairs(labels, counts, height):
+    """Each asked label's recall (answered so when asked, % of asked: the matrix's diagonal)
+    and precision (asked when answered so, % of the answers) as two upright bars, recall
+    first and at full strength. `height` lines in all."""
+    right = {l: counts[l][l] for l in labels}
+    recall = {l: 100 * right[l] / sum(counts[l].values()) for l in labels}
+    said = {l: sum(counts[t][l] for t in labels) for l in labels}
+    precision = {l: 100 * right[l] / said[l] if said[l] else 0 for l in labels}
+    bar, gap = BAR, " " * PAIR
+    slot = 2 * bar + 1 + PAIR                                   # columns a label, its gap included
+    rows = max(2, (height - 2) // 2 * 2)                        # under the bars: the axis, the labels; even, so 50 is a row's top
 
+    def column(pct, level, ramp):
+        return ramp[max(0, min(8, round(pct / 100 * rows * 8) - 8 * level))] * bar
 
-def pct(part, whole):
-    return f"{100 * part / whole:.0f}" if part else "."
-
-
-def recall_precision(rows):
-    """Each asked label's recall (answered so when asked, % of asked: the matrix's
-    diagonal) and precision (asked when answered so, % of the answers)."""
-    out = []
-    for l in asked_labels(rows):
-        right = sum(1 for r in rows if r["truth"] == l and r["answer"] == l)
-        out.append([l, pct(right, sum(1 for r in rows if r["truth"] == l)),
-                    pct(right, sum(1 for r in rows if r["answer"] == l))])
-    return table(["", "recall", "precision"], out)
+    out = [""] * (height - 2 - rows)
+    for level in range(rows - 1, -1, -1):
+        tick = "100" if level == rows - 1 else " 50" if level == rows // 2 - 1 else "   "
+        out.append(tick + " │ " + gap.join(column(recall[l], level, BRIGHT) + " " + column(precision[l], level, RAMP) for l in labels))
+    out.append("    └─" + "─" * (slot * len(labels) - len(gap) + 1))
+    out.append("      " + gap.join(l.center(2 * bar + 1) for l in labels))
+    return "\n".join(out)
