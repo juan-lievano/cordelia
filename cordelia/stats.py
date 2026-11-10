@@ -17,7 +17,6 @@ from .modes.degrees import degrees_of, parse_degrees
 BARS = 40             # most bars; past that many questions, that many groups
 BAR = 2               # columns wide
 RAMP = " ▁▂▃▄▅▆▇█"    # a cell filled by eighths from the bottom: the top of a bar lands within an eighth of a row
-BLUE = "108;157;208"  # the bars' colour (r;g;b): a mid blue, chosen on a dark navy terminal
 ROWS = 20             # rows of the histogram, 100% / ROWS each; labelled every 10%
 SHORT = 44            # a terminal with fewer lines than this gets half the rows, so a report fits
 PAD = 2               # columns between a box's edge and its contents
@@ -165,8 +164,8 @@ def histogram(rows):
 
 
 def soft(text):
-    """The bars in BLUE, plain when piped: a block at the text's full strength is too bright in a light font."""
-    return re.sub("[▁-█]+", lambda m: f"\x1b[38;2;{BLUE}m{m[0]}\x1b[39m", text) if sys.stdout.isatty() else text
+    """The bars in the terminal's dim colour, plain when piped: a block at full strength is too bright in a light font."""
+    return re.sub("[▁-█]+", lambda m: f"\x1b[2m{m[0]}\x1b[22m", text) if sys.stdout.isatty() else text
 
 
 def confusion_matrix(rows):
