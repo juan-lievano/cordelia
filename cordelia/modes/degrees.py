@@ -229,8 +229,11 @@ def hint(config, width):
     return keys + "\nsung: " + "  ".join(f"{d} {SYLLABLE[d]}" for d in degrees_of(config))
 
 
-def status(current, n, typed, config):
-    return f"{current} / {n}   [{typed[-1] if typed else ' '}]"
+def status(current, n, typed, config, answer=None):
+    """The question, the key typed, and two lines under it the right answer once it has been said,
+    under the typed one."""
+    head = f"{current} / {n}   "
+    return f"{head}[{typed[-1] if typed else ' '}]\n\n" + (" " * (len(head) + 1) + answer if answer else "")
 
 
 class Builder:

@@ -232,7 +232,7 @@ def hint(config, width):
             + (f"\nflats sung: {flats}" if flats else ""))
 
 
-def status(current, n, typed, config):
+def status(current, n, typed, config, answer=None):
     slots = ["_"] * config["keys"]
     for i, k in enumerate(typed):
         slots[i] = k

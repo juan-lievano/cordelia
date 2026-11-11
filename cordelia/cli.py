@@ -163,12 +163,15 @@ def cmd_session(mode, a):
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions"),
                 ("tags", ", ".join(tg) or "none")]
-        status = lambda cur, n, keys: mode.status(cur, n, scorer.typed(keys, keymap, config["keys"]), config)  # noqa: E731
-        text_width = max(len(mode.status(len(items), len(items), [label] * config["keys"], config))
-                         for label in set(keymap.values()))
+        status = lambda cur, n, keys, revealed: mode.status(  # noqa: E731
+            cur, n, scorer.typed(keys, keymap, config["keys"]), config, items[cur - 1]["truth"] if revealed else None)
+        widest = [mode.status(len(items), len(items), [label] * config["keys"], config, answer).split("\n")
+                  for label in set(keymap.values()) for answer in (None, label)]
+        text_width = max(len(l) for text in widest for l in text)
+        text_height = max(len(text) for text in widest)
         hint = [textwrap.fill(l, width) for l in mode.hint(config, width).split("\n")]
         hint_width = max(len(l) for h in hint for l in h.split("\n"))
-        lines = with_panel(settings_table(rows, width).split("\n"), text_width, hint_width, width)
+        lines = with_panel(settings_table(rows, width).split("\n"), text_width, text_height, hint_width, width)
         body = "\n".join(lines + [""] + hint)
         session = stats.box(title, body)
         inner = len(session.split("\n")[0]) - 2 - 2 * stats.PAD      # the warning matches the session box's width
@@ -179,7 +182,8 @@ def cmd_session(mode, a):
         show = panel_writer(screen, text_width)
         print("\r\x1b[K\n" + screen.replace(PANEL, " ") + "\n")
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
-        keystrokes, outcome, stopped_at = collect(wav, ask_ms, status=status, show=show)
+        keystrokes, outcome, stopped_at = collect(wav, ask_ms, status=status, show=show,
+                                                    reveal_ms=[round(it["window_end_s"] * 1000) for it in items])
         interrupted = outcome == "interrupted"
         outcome = "stopped" if interrupted else outcome
         store.add_keystrokes(con, sid, keystrokes)
@@ -201,32 +205,34 @@ def cmd_session(mode, a):
 PANEL = "\ue000"   # marks where the question panel's text starts, until the screen is printed
 
 
-def with_panel(rows, text_width, right, room):
-    """The settings rows with a small box at the right of the first three, for the question
-    and the keys typed, its right edge at `right` (or just past the rows) and not past `room`;
-    the rows unchanged when there is no room for it beside them."""
+def with_panel(rows, text_width, text_height, right, room):
+    """The settings rows with a small box at the right of the first few, for the question
+    and the keys typed (`text_height` lines of it), its right edge at `right` (or just past the
+    rows) and not past `room`; the rows unchanged when there is no room for it beside them."""
     inner = text_width + 4
-    panel = ["╭─ question " + "─" * (inner - 11) + "╮", "│  " + PANEL + " " * (text_width - 1) + "  │",
-             "╰" + "─" * inner + "╯"]
-    at = max(max(len(r) for r in rows[:3]) + 4, right - len(panel[0]))
-    if len(rows) < 3 or at + len(panel[0]) > room:
+    panel = ["╭─ question " + "─" * (inner - 11) + "╮",
+             *["│  " + PANEL + " " * (text_width - 1) + "  │"] * text_height, "╰" + "─" * inner + "╯"]
+    if len(rows) < len(panel):
         return rows
-    return [r.ljust(at) + panel[i] if i < 3 else r for i, r in enumerate(rows)]
+    at = max(max(len(r) for r in rows[:len(panel)]) + 4, right - len(panel[0]))
+    if at + len(panel[0]) > room:
+        return rows
+    return [r.ljust(at) + panel[i] if i < len(panel) else r for i, r in enumerate(rows)]
 
 
 def panel_writer(screen, text_width):
-    """A function that writes the question panel's text into the printed screen (the cursor
-    two lines under it), or None when the screen has no panel."""
+    """A function that writes the question panel's text, a line of it on each of the panel's
+    lines, into the printed screen (the cursor two lines under it), or None when the screen has
+    no panel."""
     lines = screen.split("\n")
-    for j, line in enumerate(lines):
-        col = line.find(PANEL)
-        if col >= 0:
-            up = len(lines) + 1 - j
-            def show(text):
-                sys.stdout.write(f"\x1b[{up}A\r" + (f"\x1b[{col}C" if col else "") + text[:text_width].ljust(text_width)
-                                 + f"\x1b[{up}B\r")
-            return show
-    return None
+    at = [(len(lines) + 1 - j, line.find(PANEL)) for j, line in enumerate(lines) if PANEL in line]
+    if not at:
+        return None
+    def show(text):
+        for (up, col), line in zip(at, text.split("\n") + [""] * len(at)):
+            sys.stdout.write(f"\x1b[{up}A\r" + (f"\x1b[{col}C" if col else "") + line[:text_width].ljust(text_width)
+                             + f"\x1b[{up}B\r")
+    return show
 
 
 def settings_table(rows, width):

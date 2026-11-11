@@ -16,10 +16,11 @@ import tty
 ESC = "\x1b"
 
 
-def collect(wav_path, ask_ms, status=None, show=None):
+def collect(wav_path, ask_ms, status=None, show=None, reveal_ms=None):
     """Returns (keystrokes, outcome, stopped_at_ms).
 
-    `status(current, n, typed)` is the text for the question on now and the keys typed for it,
+    `status(current, n, typed, revealed)` is the text for the question on now and the keys typed
+    for it, `revealed` once its `reveal_ms` moment has passed (the answer has been said),
     `show(text)` puts it on the screen (default: a line of its own, after "question ").
     keystrokes: [(t_ms, key)] with t_ms counted from the moment playback was
     started. outcome is 'completed' when the audio ran to its end, 'stopped'
@@ -41,7 +42,7 @@ def collect(wav_path, ask_ms, status=None, show=None):
     def now_ms():
         return (time.monotonic_ns() - t0) // 1_000_000
 
-    shown = -1
+    shown, shown_revealed = -1, False
     typed = []
     dirty = True
     try:
@@ -52,15 +53,18 @@ def collect(wav_path, ask_ms, status=None, show=None):
                 break
             t = now_ms()
             current = sum(1 for a in ask_ms if a <= t)
+            revealed = bool(reveal_ms) and current > 0 and t >= reveal_ms[current - 1]
             if current != shown:
                 typed, dirty = [], True             # a new question: the echoed keys reset
+            if revealed != shown_revealed:
+                dirty = True
             if dirty:
-                shown, dirty = current, False
-                line = status(current, len(ask_ms), typed) if status else f"{current} / {len(ask_ms)}"
+                shown, shown_revealed, dirty = current, revealed, False
+                line = status(current, len(ask_ms), typed, revealed) if status else f"{current} / {len(ask_ms)}"
                 if show:
                     show(line)
                 else:
-                    sys.stdout.write("\r\x1b[Kquestion " + line)
+                    sys.stdout.write("\r\x1b[Kquestion " + "   ".join(l for l in line.split("\n") if l))
                 sys.stdout.flush()
             ready, _, _ = select.select([sys.stdin], [], [], 0.05)
             if not ready:
