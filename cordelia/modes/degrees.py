@@ -47,12 +47,12 @@ SHORTHANDS = {
 # Degree 1 is the easy one, so it turns up half as often as any other.
 WEIGHT = {"1": 1}
 DEFAULT_WEIGHT = 2
-# A focused session asks half its questions in the usual mix and splits the other half
-# among the degrees focused on: evenly for `--focus b3 4`; for `--focus auto` among the TOP
-# with the most trouble in the latest WINDOW questions asked of the list, by their trouble.
-FOCUS = 0.5
-WINDOW = 60
-TOP = 3
+# `cordelia focus` asks each degree of the list in proportion to its trouble, 1 - F1 over the
+# latest WINDOW questions asked of the list (so equal skill is an even mix, 1 included);
+# `--on b3 4` instead asks half the questions evenly over the list and half over those.
+# Either way no degree gets under FLOOR of the questions.
+WINDOW = 120
+FLOOR = 0.04
 # Questions reach half an octave past the middle register either way: the
 # low octave asks the upper half of the scale, the high octave the lower half.
 OCTAVES = (-1, 0, 1)
@@ -313,23 +313,40 @@ def usual(degrees):
     return {d: w / total for d, w in weights.items()}
 
 
-def mix(degrees, focus):
-    """degree -> its part of the questions: FOCUS of them split by `focus` (degree -> weight,
-    any scale), the rest the usual mix."""
-    base, total = usual(degrees), sum(focus.values())
-    return {d: round((1 - FOCUS) * base[d] + FOCUS * focus.get(d, 0) / total, 4) for d in degrees}
+def shares(weights):
+    """degree -> weight (any scale) as parts of the questions summing to 1, none under FLOOR:
+    those that would be are held at FLOOR and the rest share what is left. Even when every
+    weight is 0."""
+    if not any(weights.values()):
+        weights = dict.fromkeys(weights, 1)
+    low = set()
+    while True:
+        total = sum(w for d, w in weights.items() if d not in low)
+        out = {d: FLOOR if d in low else (1 - FLOOR * len(low)) * w / total for d, w in weights.items()}
+        under = {d for d, p in out.items() if p < FLOOR and d not in low}
+        if not under:
+            return {d: round(p, 4) for d, p in out.items()}
+        low |= under
 
 
 def trouble(degrees, rows):
-    """Per degree, over `rows` (questions with truth and answer): asked, missed (asked and not
-    answered right, no answer included), given (answered when it was something else) and the
-    rate (missed + given + 1) / (asked + 2), which is 0.5 for a degree not yet asked."""
+    """Per degree, over `rows` (questions with truth, answer, correct and weight): right
+    (asked and answered so), missed (asked and not, no answer included), given (answered so
+    when it was something else) and f1 = 2 right / (2 right + missed + given), the mean of
+    recall and precision (harmonic); 1 - f1 is its share of the mistakes it is in. A question
+    counts its stats weight, so a focus that asks a degree more does not lower its precision
+    by itself. A degree in no question yet gets the list's f1."""
     out = {}
     for d in degrees:
-        asked = sum(1 for r in rows if r["truth"] == d)
-        missed = sum(1 for r in rows if r["truth"] == d and r["correct"] != 1)
-        given = sum(1 for r in rows if r["answer"] == d and r["truth"] != d)
-        out[d] = dict(asked=asked, missed=missed, given=given, rate=round((missed + given + 1) / (asked + 2), 4))
+        right = sum(r["weight"] for r in rows if r["truth"] == d and r["correct"] == 1)
+        missed = sum(r["weight"] for r in rows if r["truth"] == d and r["correct"] != 1)
+        given = sum(r["weight"] for r in rows if r["answer"] == d and r["truth"] != d)
+        out[d] = dict(right=round(right, 2), missed=round(missed, 2), given=round(given, 2))
+    seen = [v for v in out.values() if 2 * v["right"] + v["missed"] + v["given"]]
+    overall = (sum(2 * v["right"] for v in seen) / sum(2 * v["right"] + v["missed"] + v["given"] for v in seen)) if seen else 1
+    for v in out.values():
+        whole = 2 * v["right"] + v["missed"] + v["given"]
+        v["f1"] = round(2 * v["right"] / whole if whole else overall, 4)
     return out
 
 
@@ -345,13 +362,13 @@ def focus_config(words, degrees, last_config, recent):
     if not words:
         rows = recent(degrees)[-WINDOW:]
         t = trouble(degrees, rows)
-        top = sorted(degrees, key=lambda d: -t[d]["rate"])[:TOP]
-        return dict(how="auto", window=len(rows), trouble=t, degrees=top, shares=mix(degrees, {d: t[d]["rate"] for d in top}))
+        return dict(how="auto", window=len(rows), trouble=t, shares=shares({d: 1 - t[d]["f1"] for d in degrees}))
     chosen = parse_degrees(words)
     outside = [d for d in chosen if d not in degrees]
     if outside and explicit:
         raise SystemExit(f"--on {' '.join(outside)}: not in the list ({' '.join(degrees)})")
-    return dict(how="manual", degrees=chosen, shares=mix(degrees, dict.fromkeys(chosen, 1)))
+    return dict(how="manual", degrees=chosen,
+                shares=shares({d: 1 / len(degrees) + (1 / len(chosen) if d in chosen else 0) for d in degrees}))
 
 
 def focus_text(focus, top=None):

@@ -77,14 +77,16 @@ likely except degree 1, asked half as often; nothing is avoided but the exact
 same question twice in a row. Esc stops;
 everything before it is kept.
 
-`cordelia focus` is the degrees drill with the mix shifted: half the
-questions are asked as usual and the other half go to the degrees focused
-on. By default (auto) it reads the latest 60 questions asked of the same
-list and gives each degree a trouble rate, (missed when asked + answered
-when it was something else + 1) / (asked + 2), so both sides of a mix-up
-count; the three with the most trouble split the half in proportion to it.
-`--on b3 4` splits it evenly between degrees of your choosing instead (they
-must be in the list); `--on` with nothing after it goes back to auto. Focus
+`cordelia focus` is the degrees drill with the mix shifted toward what goes
+wrong. By default (auto) it reads the latest 120 questions asked of the same
+list and asks each degree in proportion to 1 − F1, where F1 = 2 right /
+(2 right + missed when asked + answered when it was something else): the
+degree's share of the mistakes it is in, both sides of a mix-up counting.
+Equal skill on every degree is an even mix, 1 included; no degree gets under
+4%. Each question counts its stats weight (below), so asking a degree more
+does not by itself lower its precision. `--on b3 4` instead asks half the
+questions evenly over the list and half evenly over degrees of your choosing
+(they must be in the list); `--on` with nothing after it goes back to auto. Focus
 keeps its own settings: everything left off is the last focus session's
 (before the first, the last degrees session's), `--run` included, and plain
 `cordelia degrees` remembers only unfocused sessions. The sessions are

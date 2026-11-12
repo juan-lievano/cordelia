@@ -18,11 +18,11 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;counts | the last key before the voice                   |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Focus**      | `cordelia focus`                       | last focus session's settings, `--run` too      |
-|                | `cordelia focus minor`                 | half the q on the 3 worst of the last 60, by trouble, refreshed each round |
-|                | &nbsp;&nbsp;`--on b3 4`                | half on these instead, evenly; `--on` = auto again |
+|                | `cordelia focus minor`                 | each degree ∝ 1 − F1 over the last 120 q, refreshed each round; 4% at least |
+|                | &nbsp;&nbsp;`--on b3 4`                | half evenly on these, half on all; `--on` = auto again |
 |                | &nbsp;&nbsp;`--run 21 --minutes 3`     | 7 rounds, mix-ups between; `--run 0` one session |
 |                | &nbsp;&nbsp;degrees flags              | `--bpm` `--key` `--answer` … kept apart from degrees' |
-|                | &nbsp;trouble | (missed + wrongly given + 1) / (asked + 2)      |
+|                | &nbsp;F1 | 2 right / (2 right + missed + wrongly given)    |
 |                | &nbsp;stats | with the plain degrees of the same list         |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Melody**     | `cordelia melody`                      | last session's settings, key drawn from the list |

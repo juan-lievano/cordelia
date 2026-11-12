@@ -34,9 +34,9 @@ def main(argv=None):
     f = sub.add_parser("focus", help="degrees with half the questions on the ones giving trouble; its own settings")
     degree_flags(f)
     f.add_argument("--on", nargs="*", metavar="DEGREE",
-                   help="half the questions on these degrees of the list, split evenly; nothing after it: "
-                        f"auto, half on the {degrees.TOP} with the most trouble in the latest {degrees.WINDOW} "
-                        "questions of the list, worked out afresh each round (default: the last focus session's way)")
+                   help="half the questions evenly over the list, half over these; nothing after it: auto, each "
+                        f"degree in proportion to 1 - F1 over the latest {degrees.WINDOW} questions of the list, "
+                        "worked out afresh each round (default: the last focus session's way)")
     session_flags(f)
     f.epilog = ("Every setting left out is the last focus session's (before the first, the last degrees "
                 "session's), --run too; the sessions are degrees sessions, and stats keep them with their list.")
