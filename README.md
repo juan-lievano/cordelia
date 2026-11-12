@@ -193,7 +193,7 @@ per session; `--keep-wav` keeps the audio too.
 
 | table        | one row per | notes |
 |--------------|-------------|-------|
-| `sessions`   | session     | mode, config as JSON (key, the degrees asked or the level, bpm, voice, focus, run and round, the keymap, seed, the command line as typed, the commit the code was at, null if the tree was dirty), tags, outcome (`completed` / `stopped` / `aborted`), ms into the audio when it ended |
+| `sessions`   | session     | mode, config as JSON (key, the degrees asked or the level, bpm, voice, focus, run and round, the keymap, seed, the commit the code was at, null if the tree was dirty), tags, outcome (`completed` / `stopped` / `aborted`), ms into the audio when it ended |
 | `items`      | question    | truth as a keymap label, onset ms, window-end ms (when the answer starts sounding), meta JSON (degree label, octave, register, MIDI note) |
 | `keystrokes` | key press   | ms since playback was started, key name (`4`, `space`, `other`...) |
 | `answers`    | question    | derived: answer, correct (NULL when nothing was pressed), latency from onset to the press that counted, presses in the window, late presses after it |
