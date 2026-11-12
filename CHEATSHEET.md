@@ -74,6 +74,8 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--key G`                  | only that key                                   |
 |                | &nbsp;&nbsp;`--tag x`                  | only that tag                                   |
 |                | &nbsp;confusions | rows asked, latest 500 q; degrees and chords    |
+|                | `cordelia history`                     | settings played, sessions + minutes each, newest first |
+|                | &nbsp;&nbsp;`history melody`           | that drill (`degrees` `focus` `melody` `chords`) |
 |                | `cordelia journal`                     | a cell a day, a dot per 2 min practised         |
 |                | `cordelia rescore`                     | rebuild answers from the key presses            |
 |                | `cordelia tags`                        | sticky tags                                     |

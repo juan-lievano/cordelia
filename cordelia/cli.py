@@ -12,7 +12,7 @@ import tempfile
 import textwrap
 import time
 
-from . import journal, scorer, stats, store
+from . import history, journal, scorer, stats, store
 from .collector import collect
 from .modes import DRILLS, MODES, chords, degrees, melody
 from .synth import render
@@ -73,6 +73,8 @@ def main(argv=None):
     s.add_argument("--key")
     s.add_argument("--tag")
 
+    h = sub.add_parser("history", help="the settings a drill has been played with, and how long each")
+    h.add_argument("mode", nargs="?", help=" | ".join(DRILLS) + " (default: the drill played last)")
     sub.add_parser("journal", help="the practice wall: a column per week, a cell per day shaded by minutes")
     sub.add_parser("rescore", help="rebuild every session's answers from its key presses")
     sub.add_parser("tags", help="show the sticky tags")
@@ -89,6 +91,8 @@ def main(argv=None):
         return cmd_session(degrees, a, focused=True)
     if a.cmd == "stats":
         return stats.report(store.connect(), a.mode, a.degrees, a.key, a.tag)
+    if a.cmd == "history":
+        return history.show(store.connect(), a.mode)
     if a.cmd == "journal":
         return journal.show(store.connect())
     if a.cmd == "rescore":
