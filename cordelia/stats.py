@@ -40,13 +40,13 @@ DOT = {(0, 0): 0x01, (0, 1): 0x02, (0, 2): 0x04, (0, 3): 0x40,     # (column, ro
 def load(con, mode=None, degrees=None, key=None, tag=None):
     """One row per question asked in a finished session; mode None is every mode."""
     sql = """SELECT s.id, s.started_at_ms, s.mode, s.config, s.tags, s.stopped_at_ms,
-                    i.truth, i.meta, a.answer, a.correct, a.latency_ms
+                    i.truth, i.meta, i.ask_ms, a.answer, a.correct, a.latency_ms
              FROM items i JOIN sessions s ON s.id = i.session_id
              LEFT JOIN answers a ON a.session_id = i.session_id AND a.idx = i.idx
              WHERE (? IS NULL OR s.mode = ?) AND s.outcome IN ('completed', 'stopped')
              ORDER BY s.started_at_ms, i.idx"""
     rows = []
-    for sid, started, smode, config, tags, stopped, truth, meta, answer, correct, latency in con.execute(sql, (mode, mode)):
+    for sid, started, smode, config, tags, stopped, truth, meta, ask, answer, correct, latency in con.execute(sql, (mode, mode)):
         cfg, tg = json.loads(config), json.loads(tags)
         if degrees and (smode != "degrees" or degrees_of(cfg) != degrees):
             continue
@@ -55,7 +55,7 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
         if tag and tag not in tg:
             continue
         rows.append(dict(sid=sid, started=started, mode=smode, config=cfg, truth=truth, meta=json.loads(meta),
-                         answer=answer, correct=correct, latency=latency, stopped=stopped,
+                         ask=ask, answer=answer, correct=correct, latency=latency, stopped=stopped,
                          exercise=exercise(smode, cfg)))
     return rows
 
@@ -95,10 +95,10 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
     per_bar = "a bar per q" if n <= bars else f"each bar the mean of ~{n / bars:.0f}"
     right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
     title = f"{exercise(ex_rows[-1]['mode'], ex_rows[-1]['config'], brief=True)} · {n} q · {right:.0f}% right · {per_bar}"
-    trend = slope(range(n), [100 * (r["correct"] == 1) for r in ex_rows])
+    trend = slope(practised(ex_rows), [100 * (r["correct"] == 1) for r in ex_rows])
     if trend is not None:
         b, se = trend
-        title += f" · trend {sig2(100 * b, '+')} ± {sig2(100 * se)} pp / 100 q"
+        title += f" · trend {sig2(b, '+')} ± {sig2(se)} pp / hour"
     hist = box(title, histogram(ex_rows, bars))
     blocks = [hist]
     if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
@@ -189,6 +189,19 @@ def slope(xs, ys):
     b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
     rss = sum((y - my - b * (x - mx)) ** 2 for x, y in zip(xs, ys))
     return b, math.sqrt(rss / (n - 2) / sxx)
+
+
+def practised(rows):
+    """Hours of the exercise practised when each question was asked: the earlier
+    sessions' minutes as the journal counts them (how far the audio got), then how far into
+    its own session the question came. Days off between sessions do not count."""
+    out, done, sid, length = [], 0, None, 0
+    for r in rows:
+        if r["sid"] != sid:
+            done += length
+            sid, length = r["sid"], r["stopped"] or 0
+        out.append((done + r["ask"]) / 3.6e6)
+    return out
 
 
 def bar_count(n):
