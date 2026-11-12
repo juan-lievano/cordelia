@@ -79,6 +79,7 @@ def main(argv=None):
     if not (sys.argv[1:] if argv is None else argv):
         return p.print_help()
     a, extra = p.parse_known_args(argv)
+    a.argv = list(sys.argv[1:] if argv is None else argv)
     if extra:       # argparse would blame the top-level usage; the subcommand's is the useful one
         sub.choices[a.cmd].error(f"unrecognized arguments: {' '.join(extra)}  (--help lists the flags)")
     if a.cmd in MODES:
@@ -222,6 +223,7 @@ def play(mode, a, run=None):
     config["keymap"] = keymap
     config["seed"] = a.seed
     config["commit"] = commit()
+    config["argv"] = a.argv           # what was typed; the rest of the config is what it came to
     if a.ambient:
         return ambient(a, mode, config, score, items, bank)
 
