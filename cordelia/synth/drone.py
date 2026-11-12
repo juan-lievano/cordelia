@@ -6,11 +6,11 @@ import operator
 
 from .base import SAMPLE_RATE, midi_to_freq
 
-DRONE_LEVEL = 0.288          # down from 0.40 with the root an octave up: the
+DRONE_LEVEL = 0.317          # down from 0.40 with the root an octave up: the
                              # same energy sits where the ear is more sensitive;
                              # then a further dB off, the ears felt pressed after a session (0.24);
-                             # then up with the sub-octave and the core (2026-11-12) so the
-                             # other partials stay exactly as loud
+                             # then up with the sub-octave and the core (2026-11-12, 0.288, and
+                             # again 0.317 with the core) so the other partials stay exactly as loud
 
 # Drone partials as harmonics of the root, which sits two octaves under the
 # middle-register tonic (C2 for C, 65 Hz: the old C1 root was mostly below
@@ -25,7 +25,7 @@ DRONE_LEVEL = 0.288          # down from 0.40 with the root an octave up: the
 # major third would fight the minor scales) and no 7th.
 PARTIALS = (
     (1, 0.65, 0.50, 22.0, 45.0),    # sub-octave (0.55 until 2026-11-12: +1.4 dB, a touch more bass)
-    (2, 1.40, 0.60, 18.0, 40.0),    # core (1.00 until 2026-11-12: +2.9 dB, the octave clearer)
+    (2, 1.70, 0.60, 18.0, 40.0),    # core (1.00 until 2026-11-12, then 1.40, then 1.70: +4.6 dB in all, the octave clearer)
     (3, 0.24, 0.15, 11.0, 22.0),    # fifth
     (4, 0.35, 0.35, 18.0, 40.0),    # core, octave up: the mid-register tonic
     (6, 0.14, 0.05, 9.0, 18.0),     # fifth
