@@ -35,10 +35,12 @@ def main(argv=None):
     degree_flags(f)
     f.add_argument("--on", nargs="*", metavar="DEGREE",
                    help="half the questions evenly over the list, half over these; nothing after it: auto, each "
-                        f"degree in proportion to its trouble over the latest {degrees.PER_DEGREE} times it was asked, "
+                        "degree by its trouble (see --by), "
                         "worked out afresh each round (default: the last focus session's way)")
-    f.add_argument("--by", help="auto's trouble: recall, 1 - recall (how often it is missed when asked); "
-                                "f1, 1 - F1 (answering it when it is not counts too) (default: the last focus session's; recall)")
+    f.add_argument("--by", help="auto's rule: recall, each degree by its miss rate over its own latest "
+                                f"{degrees.PER_DEGREE}; f1, by 1 - F1 (answering it when it is not counts too); thompson, "
+                                f"by the chance it is the weakest, from the list's latest {degrees.SHARED} "
+                                "(default: the last focus session's; recall)")
     session_flags(f)
     f.epilog = ("Every setting left out is the last focus session's (before the first, the last degrees "
                 "session's), --run too; the sessions are degrees sessions, and stats keep them with their list.")

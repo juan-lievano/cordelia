@@ -48,13 +48,18 @@ SHORTHANDS = {
 WEIGHT = {"1": 1}
 DEFAULT_WEIGHT = 2
 # `cordelia focus` asks each degree of the list in proportion to its trouble over the latest
-# PER_DEGREE times it was asked, 1 - recall or (`--by f1`) 1 - F1, so equal skill is an
-# even mix, 1 included;
+# PER_DEGREE times it was asked: its miss rate, (missed + 1) / (asked + 2), the mean of its
+# Beta(right + 1, missed + 1), or (`--by f1`) 1 - F1; so equal skill is an even mix, 1
+# included. `--by thompson` instead asks each as often as the chance that it is the weakest,
+# its Beta from the list's latest SHARED questions drawn against the others' (THOMPSON draws,
+# a fixed seed): a degree with few answers there stays uncertain and gets explored.
 # `--on b3 4` instead asks half the questions evenly over the list and half over those.
 # Either way no degree gets under FLOOR of the questions.
-PER_DEGREE = 20
+PER_DEGREE = 40
+SHARED = 80
+THOMPSON = 20000
 FLOOR = 0.04
-BY = ("recall", "f1")
+BY = ("recall", "f1", "thompson")
 # Questions reach half an octave past the middle register either way: the
 # low octave asks the upper half of the scale, the high octave the lower half.
 OCTAVES = (-1, 0, 1)
@@ -335,11 +340,11 @@ def trouble(degrees, rows):
     """Per degree, over its own latest PER_DEGREE questions among `rows` (the list's questions,
     oldest first, with truth, answer, correct and weight), so each rests on as much evidence
     however rarely it has come up: asked, right, missed (no answer included), given (answered
-    so when it was something else, over the same stretch of questions), recall = right /
-    asked, which answering a degree too often cannot lower, and f1 = 2 right / (2 right +
+    so when it was something else, over the same stretch of questions), recall = (right + 1) /
+    (asked + 2), the mean of its Beta, which answering a degree too often cannot lower, and f1 = 2 right / (2 right +
     missed + given), the harmonic mean of recall and precision. In f1 each question counts its
     stats weight, so a focus that asks a degree more does not lower its precision by itself.
-    A degree not yet asked gets the list's recall and f1."""
+    A degree not yet asked gets recall 1/2 and the list's f1."""
     out = {}
     for d in degrees:
         at = [i for i, r in enumerate(rows) if r["truth"] == d][-PER_DEGREE:]
@@ -350,15 +355,24 @@ def trouble(degrees, rows):
         w = lambda rs: sum(r["weight"] for r in rs)   # noqa: E731
         out[d] = dict(asked=len(mine), right=len(right), missed=len(missed), given=len(wrong),
                       f1_parts=(w(right), w(missed), w(wrong)))
-    asked = [v for v in out.values() if v["asked"]]
-    recall = sum(v["right"] for v in asked) / sum(v["asked"] for v in asked) if asked else 1
     parts = [v["f1_parts"] for v in out.values() if sum(v["f1_parts"])]
     f1 = sum(2 * r for r, _, _ in parts) / sum(2 * r + m + g for r, m, g in parts) if parts else 1
     for v in out.values():
         r, m, g = v.pop("f1_parts")
-        v["recall"] = round(v["right"] / v["asked"] if v["asked"] else recall, 4)
+        v["recall"] = round((v["right"] + 1) / (v["asked"] + 2), 4)
         v["f1"] = round(2 * r / (2 * r + m + g) if r + m + g else f1, 4)
     return out
+
+
+def weakest(counts):
+    """degree -> the chance that it is the weakest: each degree's recall a Beta(right + 1,
+    missed + 1), THOMPSON draws of every one, the share of draws in which it came lowest.
+    Seeded, so the same answers give the same shares."""
+    rng, lowest = random.Random(0), dict.fromkeys(counts, 0)
+    for _ in range(THOMPSON):
+        draw = {d: rng.betavariate(c["right"] + 1, c["missed"] + 1) for d, c in counts.items()}
+        lowest[min(draw, key=draw.get)] += 1
+    return {d: n / THOMPSON for d, n in lowest.items()}
 
 
 def focus_config(words, degrees, last_config, recent, by=None):
@@ -374,6 +388,11 @@ def focus_config(words, degrees, last_config, recent, by=None):
     if not explicit:
         last = last_config and degrees_of(last_config) == tuple(degrees) and last_config.get("focus")
         words = last["degrees"] if last and last["how"] == "manual" else []
+    if not words and by == "thompson":
+        rows = recent(degrees)[-SHARED:]
+        counts = {d: dict(right=sum(1 for r in rows if r["truth"] == d and r["correct"] == 1),
+                          missed=sum(1 for r in rows if r["truth"] == d and r["correct"] != 1)) for d in degrees}
+        return dict(how="auto", by=by, shared=len(rows), counts=counts, shares=shares(weakest(counts)))
     if not words:
         t = trouble(degrees, recent(degrees))
         return dict(how="auto", by=by, per_degree=PER_DEGREE, trouble=t, shares=shares({d: 1 - t[d][by] for d in degrees}))
