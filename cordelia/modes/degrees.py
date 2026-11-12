@@ -47,6 +47,12 @@ SHORTHANDS = {
 # Degree 1 is the easy one, so it turns up half as often as any other.
 WEIGHT = {"1": 1}
 DEFAULT_WEIGHT = 2
+# A focused session asks half its questions in the usual mix and splits the other half
+# among the degrees focused on: evenly for `--focus b3 4`; for `--focus auto` among the TOP
+# with the most trouble in the latest WINDOW questions asked of the list, by their trouble.
+FOCUS = 0.5
+WINDOW = 60
+TOP = 3
 # Questions reach half an octave past the middle register either way: the
 # low octave asks the upper half of the scale, the high octave the lower half.
 OCTAVES = (-1, 0, 1)
@@ -193,6 +199,7 @@ def key_text(config):
 def settings(config):
     """The session's settings for its box, as (name, value) rows."""
     return [("key", key_text(config)), ("degrees", " ".join(degrees_of(config))),
+            *([("focus", focus_text(config["focus"]))] if config.get("focus") else []),
             ("tempo", f"{config['bpm']:g} BPM"),
             ("voice", SINGER + ", sung" if config.get("answer") == "sung" else config.get("voice", "default"))]
 
@@ -217,8 +224,9 @@ def configure(a, last_config, rng):
         raise SystemExit("--minutes must be positive")
     if a.answer not in ANSWERS:
         raise SystemExit(f"--answer is {' or '.join(ANSWERS)}")
+    focus = focus_config(a.focus, degrees, last_config, a.recent)
     return dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=a.bpm, degrees=list(degrees),
-                voice=a.voice, answer=a.answer, keys=1)
+                voice=a.voice, answer=a.answer, keys=1, focus=focus)
 
 
 def hint(config, width):
@@ -285,16 +293,82 @@ class Builder:
         return (NOTE_BEATS + PAUSE_BEATS + longest + AGAIN_BEATS + REST_BEATS) * self.beat
 
 
-def pool(degrees):
-    """((label, octave), weight) for every question the list can ask."""
-    return [((d, o), WEIGHT.get(d, DEFAULT_WEIGHT))
-            for o in OCTAVES for d in degrees if REGISTER[o](SEMITONES[d])]
+def pool(degrees, shares=None):
+    """((label, octave), weight) for every question the list can ask; with `shares`
+    (degree -> its part of the questions) a degree's share split evenly over its octaves."""
+    qs = [(d, o) for o in OCTAVES for d in degrees if REGISTER[o](SEMITONES[d])]
+    if shares is None:
+        return [(q, WEIGHT.get(q[0], DEFAULT_WEIGHT)) for q in qs]
+    octaves = {d: sum(1 for q in qs if q[0] == d) for d in degrees}
+    return [(q, shares.get(q[0], 0) / octaves[q[0]]) for q in qs]
 
 
-def draw(rng, degrees, count):
+def usual(degrees):
+    """degree -> its part of the questions without a focus (1 half as often, and a degree asked
+    in fewer octaves less often)."""
+    weights = {}
+    for (d, _), w in pool(degrees):
+        weights[d] = weights.get(d, 0) + w
+    total = sum(weights.values())
+    return {d: w / total for d, w in weights.items()}
+
+
+def mix(degrees, focus):
+    """degree -> its part of the questions: FOCUS of them split by `focus` (degree -> weight,
+    any scale), the rest the usual mix."""
+    base, total = usual(degrees), sum(focus.values())
+    return {d: round((1 - FOCUS) * base[d] + FOCUS * focus.get(d, 0) / total, 4) for d in degrees}
+
+
+def trouble(degrees, rows):
+    """Per degree, over `rows` (questions with truth and answer): asked, missed (asked and not
+    answered right, no answer included), given (answered when it was something else) and the
+    rate (missed + given + 1) / (asked + 2), which is 0.5 for a degree not yet asked."""
+    out = {}
+    for d in degrees:
+        asked = sum(1 for r in rows if r["truth"] == d)
+        missed = sum(1 for r in rows if r["truth"] == d and r["correct"] != 1)
+        given = sum(1 for r in rows if r["answer"] == d and r["truth"] != d)
+        out[d] = dict(asked=asked, missed=missed, given=given, rate=round((missed + given + 1) / (asked + 2), 4))
+    return out
+
+
+def focus_config(words, degrees, last_config, recent):
+    """The session's focus from `--focus` (None: the last session's when the list is the same, [] none, `auto`, or degrees
+    from the list), or None. `recent(degrees)` gives the latest questions asked of the list.
+    What is stored says how it was chosen and the parts it gave each degree."""
+    explicit = words is not None
+    if not explicit:        # the last session's focus, if it asked the same list
+        same = last_config and degrees_of(last_config) == tuple(degrees)
+        last = same and last_config.get("focus")
+        words = [] if not last else ["auto"] if last["how"] == "auto" else last["degrees"]
+    if not words:
+        return None
+    if [w.lower() for w in words] == ["auto"]:
+        rows = recent(degrees)[-WINDOW:]
+        t = trouble(degrees, rows)
+        top = sorted(degrees, key=lambda d: -t[d]["rate"])[:TOP]
+        return dict(how="auto", window=len(rows), trouble=t, degrees=top, shares=mix(degrees, {d: t[d]["rate"] for d in top}))
+    chosen = parse_degrees(words)
+    outside = [d for d in chosen if d not in degrees]
+    if outside and explicit:
+        raise SystemExit(f"--focus {' '.join(outside)}: not in the list ({' '.join(degrees)})")
+    chosen = [d for d in chosen if d in degrees]
+    if not chosen:
+        return None
+    return dict(how="manual", degrees=chosen, shares=mix(degrees, dict.fromkeys(chosen, 1)))
+
+
+def focus_text(focus, top=None):
+    """`auto · b3 24% 4 19% 5 12% …`, the degrees by their part of the questions."""
+    ranked = sorted(focus["shares"].items(), key=lambda kv: -kv[1])[:top]
+    return " · ".join([focus["how"], "  ".join(f"{d} {100 * s:.0f}%" for d, s in ranked)])
+
+
+def draw(rng, degrees, count, shares=None):
     """(label, octave) pairs, never the exact same question twice in a row."""
-    questions = [q for q, _ in pool(degrees)]
-    weights = [w for _, w in pool(degrees)]
+    questions = [q for q, _ in pool(degrees, shares)]
+    weights = [w for _, w in pool(degrees, shares)]
     out = []
     for _ in range(count):
         q = rng.choices(questions, weights)[0]
@@ -312,7 +386,7 @@ def build_session(config, bank, rng=None):
     t = b.cadence(INTRO_BEATS * b.beat)
     count = max(1, int((limit - t) // b.max_phrase()))
     items = []
-    for idx, (label, octave) in enumerate(draw(rng, config["degrees"], count)):
+    for idx, (label, octave) in enumerate(draw(rng, config["degrees"], count, (config.get("focus") or {}).get("shares"))):
         window_end, nxt = b.phrase(t, label, octave)
         items.append(dict(idx=idx, truth=label, ask_s=t, window_end_s=window_end,
                           meta=dict(degree=label, octave=octave, register=OCTAVE_NAMES[octave],

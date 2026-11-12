@@ -20,6 +20,8 @@ python3 -m cordelia degrees                        # the same, from the repo
 python3 -m cordelia degrees 1 2 b3 4 5 b6 b7 --key D Eb E   # a key drawn from these each session (all = the twelve); any list of degrees is an exercise; minor = this list, all = the twelve
 python3 -m cordelia degrees 1 2 5 6                # a list never typed before is a new exercise from this session on
 python3 -m cordelia degrees --voice Samantha       # any `say -v ?` voice
+python3 -m cordelia degrees minor --focus b3 4     # half the questions on b3 and 4, the other half the usual mix
+python3 -m cordelia degrees minor --focus auto --minutes 3 --run 21   # 7 rounds of 3 min, each focused on the latest trouble
 python3 -m cordelia degrees --tag headphones       # sticky, like teepee; --tag none clears
 python3 -m cordelia degrees --midi t.mid           # also write the score as MIDI
 python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
@@ -73,6 +75,23 @@ half of the scale, the high octave the lower half. Every question is equally
 likely except degree 1, asked half as often; nothing is avoided but the exact
 same question twice in a row. Esc stops;
 everything before it is kept.
+
+`--focus` shifts that mix: half the questions are asked as usual and the
+other half go to the degrees focused on. `--focus b3 4` splits that half
+evenly between them (they must be in the list). `--focus auto` reads the
+latest 60 questions asked of the same list and gives each degree a trouble
+rate, (missed when asked + answered when it was something else + 1) /
+(asked + 2), so both sides of a mix-up count; the three with the most
+trouble split the half in proportion to it. `--focus` with nothing after it
+clears it; left off, the last session's focus stays while the list does.
+The config stores how the focus was chosen, the part of the questions each
+degree got and, for auto, the counts behind it.
+
+`--run 20` (any drill) plays rounds of `--minutes` back to back until about
+that long. Each round is an ordinary session, set up afresh (a new key; with
+`--focus auto`, a new focus from the answers so far, this round's included),
+and between rounds a box shows the round's and the run's right count and
+the run's mix-ups, asked → answered. Esc ends the run after its round.
 
 ### The `melody` mode
 
@@ -168,7 +187,7 @@ per session; `--keep-wav` keeps the audio too.
 
 | table        | one row per | notes |
 |--------------|-------------|-------|
-| `sessions`   | session     | mode, config as JSON (key, the degrees asked or the level, bpm, voice, the keymap, seed, the commit the code was at, null if the tree was dirty), tags, outcome (`completed` / `stopped` / `aborted`), ms into the audio when it ended |
+| `sessions`   | session     | mode, config as JSON (key, the degrees asked or the level, bpm, voice, focus, run and round, the keymap, seed, the commit the code was at, null if the tree was dirty), tags, outcome (`completed` / `stopped` / `aborted`), ms into the audio when it ended |
 | `items`      | question    | truth as a keymap label, onset ms, window-end ms (when the answer starts sounding), meta JSON (degree label, octave, register, MIDI note) |
 | `keystrokes` | key press   | ms since playback was started, key name (`4`, `space`, `other`...) |
 | `answers`    | question    | derived: answer, correct (NULL when nothing was pressed), latency from onset to the press that counted, presses in the window, late presses after it |
@@ -192,7 +211,13 @@ a block of braille dots scattered as densely as the share of that answer
 (any answer at all lights a dot, so an empty cell means never), twice as
 tall where the terminal has the height. Recall and precision are
 a pair of upright bars for each label, recall first; the circle of fifths
-sits in whatever width is left.
+sits in whatever width is left. A question from a focused session counts
+its degree's usual part of the questions over the part the focus gave it,
+in the histogram, the trend and the matrix, so a focus changes how often a
+degree comes up and not how right the exercise reads; the title says how
+many sessions were focused. The trend is in percentage points per hour
+practised: the earlier sessions' minutes, then how far into its own session
+the question came.
 `--mode`, `--degrees`, `--key` and `--tag` pick a different last session,
 so that harder settings don't read as regression. An exercise is its mode
 and its content (the degree list, the melody recipe, the chords level), and

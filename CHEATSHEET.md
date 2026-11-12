@@ -11,6 +11,10 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `--bpm 40`                             | tempo (last; 50)                                |
 |                | `--voice Samantha`                     | any `say -v ?` voice (last; system)             |
 |                | `--answer sung`                        | syllable sung on the note; `spoken` (last; spoken) |
+|                | `--focus b3 4`                         | half the q on these, half the usual mix (last, same list; none) |
+|                | `--focus auto`                         | half on the 3 worst of the last 60 q, by trouble |
+|                | &nbsp;trouble | (missed + wrongly given + 1) / (asked + 2) |
+|                | `--focus`                              | no focus                                        |
 |                | &nbsp;solfege | 1 do · 2 re · 3 mi · 4 fa · 5 so · 6 la · 7 ti |
 |                | &nbsp;flats | b2 ga · b3 nu · b5 jur · b6 ki · b7 pe         |
 |                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
@@ -47,7 +51,9 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `a` aug · 1 3 #5                       | `o` dim7 · 1 b3 b5 bb7                          |
 |                | `5` 5 · 1 5                            | `h` m7b5 · 1 b3 b5 b7                           |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
-| **Any drill**  | `--tag headphones`                     | sticky tag; `none` clears                       |
+| **Any drill**  | `--run 20`                             | rounds of `--minutes` for ~20 min, mix-ups between |
+|                | `degrees minor --focus auto --minutes 3 --run 21` | 7 rounds, each refocused on what you just missed |
+|                | `--tag headphones`                     | sticky tag; `none` clears                       |
 |                | `--seed 7`                             | same questions again                            |
 |                | `--keep-wav`                           | keep the audio in `data/sessions/`              |
 |                | `--midi t.mid`                         | also write MIDI                                 |
@@ -57,6 +63,8 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `Ctrl-C`                               | same, and ends a `;` chain or loop              |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Afterwards** | `cordelia stats`                       | last exercise: right% bars, trend, confusions   |
+|                | &nbsp;trend | pp per hour practised                           |
+|                | &nbsp;focused sessions | weighted back to the usual mix                  |
 |                | &nbsp;&nbsp;`--mode chords`            | last session of that mode                       |
 |                | &nbsp;&nbsp;`--degrees minor`          | degrees sessions with exactly that list         |
 |                | &nbsp;&nbsp;`--key G`                  | only that key                                   |

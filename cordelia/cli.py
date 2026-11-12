@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 
 from . import journal, scorer, stats, store
 from .collector import collect
@@ -35,6 +36,10 @@ def main(argv=None):
     d.add_argument("--bpm", type=float)
     d.add_argument("--voice", help="a `say -v ?` voice; 'default' = system voice")
     d.add_argument("--answer", help="spoken: the degree said, then the note again; sung: its syllable sung on the note")
+    d.add_argument("--focus", nargs="*", metavar="DEGREE",
+                   help="half the questions on these degrees of the list (the other half the usual mix); "
+                        f"auto: on the {degrees.TOP} with the most trouble in the latest {degrees.WINDOW} questions of the list; "
+                        "nothing after it: no focus (default: the last session's)")
     session_flags(d)
 
     m = sub.add_parser("melody", help="short melodies over a drone, sung back after each")
@@ -110,6 +115,9 @@ def session_flags(p):
     p.add_argument("--keep-wav", action="store_true", help="keep the session's WAV in data/sessions/")
     p.add_argument("--midi", metavar="FILE", help="also write the score as a MIDI file")
     p.add_argument("--seed", type=int, help="draw the same questions again")
+    p.add_argument("--run", type=float, metavar="MINUTES",
+                   help="rounds of --minutes each, back to back, until about this long; "
+                        "between rounds the mix-ups so far (and with --focus auto a new focus)")
     p.add_argument("--ambient", action="store_true",
                    help="just play: the same audio, no keys read, nothing recorded (Esc stops)")
 
@@ -129,10 +137,56 @@ def remember(a, defaults, last_config):
 
 
 def cmd_session(mode, a):
+    """One session, or with --run rounds of them, each ordinary and recorded on its own, the
+    settings worked out afresh before each (a new key, with --focus auto a new focus)."""
+    if not a.run or a.ambient:
+        return play(mode, a)
+    con = store.connect()
+    last = store.session(con, store.last_session_id(con, mode.NAME) or 0)
+    remember(a, mode.DEFAULTS, last and last["config"])          # --minutes, so the rounds can be counted
+    run = dict(id=round(time.time() * 1000), round=0, rounds=max(1, round(a.run / a.minutes)))
+    seed, played = a.seed, []
+    while True:
+        run["round"] += 1
+        a.seed = None if seed is None else seed + run["round"] - 1
+        sid, outcome = play(mode, a, run)
+        played.append(sid)
+        last = run["round"] >= run["rounds"] or outcome != "completed"
+        print(stats.centred(stats.box("this run" if last else f"round {run['round']} / {run['rounds']} done",
+                                      round_summary(store.connect(), played))) + "\n")
+        if last:
+            return
+
+
+def round_summary(con, sids):
+    """Right of asked in the last round and in the run so far, and the run's mix-ups, most first."""
+    marks = ",".join("?" * len(sids))
+    rows = con.execute(f"""SELECT i.session_id, i.truth, a.answer, a.correct FROM items i LEFT JOIN answers a
+                           ON a.session_id = i.session_id AND a.idx = i.idx WHERE i.session_id IN ({marks})""", sids).fetchall()
+
+    def right(rs):
+        n = sum(1 for r in rs if r[3] == 1)
+        return f"{n} / {len(rs)} right" + (f" ({100 * n / len(rs):.0f}%)" if rs else "")
+    mixups = {}
+    for _, truth, answer, correct in rows:
+        if correct != 1:
+            k = f"{truth} → {answer or stats.NONE}"
+            mixups[k] = mixups.get(k, 0) + 1
+    worst = sorted(mixups.items(), key=lambda kv: -kv[1])[:8]
+    lines = [f"round  {right([r for r in rows if r[0] == sids[-1]])}"] if len(sids) > 1 else []
+    lines += [f"run    {right(rows)}"]
+    return "\n".join(lines + (["", "mix-ups this run, asked → answered"] + [f"{k}  ×{n}" for k, n in worst] if worst else []))
+
+
+def play(mode, a, run=None):
+    """One session: set up, rendered, played, scored, saved. Returns (session id, outcome)."""
     con = store.connect()
     last = store.session(con, store.last_session_id(con, mode.NAME) or 0)
     remember(a, mode.DEFAULTS, last and last["config"])
+    a.recent = lambda degs: stats.load(con, mode.NAME, degs)
     config = mode.configure(a, last and last["config"], random.Random(a.seed))
+    if run:
+        config["run"] = dict(run)
     if not degrees.MIN_BPM <= config["bpm"] <= degrees.MAX_BPM:
         raise SystemExit(f"--bpm must be between {degrees.MIN_BPM} and {degrees.MAX_BPM}")
     bank = mode.bank(config, store.data_dir())
@@ -162,6 +216,7 @@ def cmd_session(mode, a):
         title = f"session {sid} · {mode.NAME}"
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions"),
+                *([("round", f"{run['round']} / {run['rounds']}")] if run else []),
                 ("tags", ", ".join(tg) or "none")]
         status = lambda cur, n, keys, revealed: mode.status(  # noqa: E731
             cur, n, scorer.typed(keys, keymap, config["keys"]), config, items[cur - 1]["truth"] if revealed else None)
@@ -200,6 +255,7 @@ def cmd_session(mode, a):
             os.rmdir(tmpdir)
     if interrupted:
         die_of_interrupt()
+    return sid, outcome
 
 
 PANEL = "\ue000"   # marks where the question panel's text starts, until the screen is printed
