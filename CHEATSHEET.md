@@ -24,7 +24,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;degrees flags              | `--bpm` `--key` `--answer` … kept apart from degrees' |
 |                | &nbsp;&nbsp;`--by f1`                  | ∝ 1 − F1: wrongly given counts too (last; recall) |
 |                | &nbsp;&nbsp;`--by thompson`            | ∝ chance it's the weakest, Betas from the last 80 q |
-|                | &nbsp;recall · F1 | right / asked · 2 right / (2 right + missed + wrongly given) |
+|                | &nbsp;miss rate · F1 | (missed+1)/(asked+2) · 2 right / (2 right + missed + wrongly given) |
 |                | &nbsp;stats | a drill of its own: `focus minor`; `--mode focus` |
 |                | &nbsp;auto reads | the list's q, degrees and focus alike           |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
