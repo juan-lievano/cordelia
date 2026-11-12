@@ -10,7 +10,7 @@ from datetime import datetime
 
 from .modes import DRILLS
 from .modes.degrees import degrees_of, short
-from .stats import box, centred, columns, table
+from .stats import box, centred, table
 
 ROWS = 25             # the most recent combinations shown
 
