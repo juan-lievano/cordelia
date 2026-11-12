@@ -185,7 +185,7 @@ def cmd_session(mode, a, focused=False):
             n, right = store.connect().execute(
                 f"SELECT count(*), sum(correct = 1) FROM answers WHERE session_id IN ({','.join('?' * len(played))})",
                 played).fetchone()
-            print(f"run: {right or 0} / {n} right" + (f" ({100 * (right or 0) / n:.0f}%)" if n else "")
+            print(f"\nrun: {right or 0} / {n} right" + (f" ({100 * (right or 0) / n:.0f}%)" if n else "")
                   + f", {len(played)} round{'s' if len(played) > 1 else ''}")
             return
 
@@ -224,9 +224,7 @@ def play(mode, a, run=None):
         tmpdir = tempfile.mkdtemp(prefix="cordelia_")
         wav = os.path.join(tmpdir, "session.wav")
     try:
-        if run and run["round"] > 1:
-            sys.stdout.write("\x1b[H\x1b[2J")      # the round before scrolls away: one box, redrawn each round
-        render(score, wav, bank, progress)
+        render(score, wav, bank, progress)       # under the last round's box, which stays up meanwhile
         store.add_items(con, sid, items)
         title = " · ".join([f"session {sid}", name,
                             *([f"round {run['round']} / {run['rounds']}"] if run else [])])
@@ -250,7 +248,15 @@ def play(mode, a, run=None):
                                                   "nothing says what code produced it", inner))) + "\n" if config["commit"] is None else ""
         screen = stats.centred(warning + session)
         show = panel_writer(screen, text_width)
-        print("\r\x1b[K\n" + screen.replace(PANEL, " ") + "\n")
+        shown = screen.replace(PANEL, " ")
+        if run and run.get("height"):    # the last round's box, rewritten in place: up from the line under it
+            sys.stdout.write(f"\r\x1b[{run['height'] + 1}A" + "".join(l + "\x1b[K\n" for l in shown.split("\n"))
+                             + "\x1b[J\n")
+            sys.stdout.flush()
+        else:
+            print("\r\x1b[K\n" + shown + "\n")
+        if run:
+            run["height"] = shown.count("\n") + 1
         ask_ms = [round(it["ask_s"] * 1000) for it in items]
         keystrokes, outcome, stopped_at = collect(wav, ask_ms, status=status, show=show,
                                                     reveal_ms=[round(it["window_end_s"] * 1000) for it in items])
@@ -259,7 +265,12 @@ def play(mode, a, run=None):
         store.add_keystrokes(con, sid, keystrokes)
         store.replace_answers(con, sid, scorer.score(store.items(con, sid), keystrokes, keymap, config["keys"]))
         store.finish_session(con, sid, outcome, stopped_at)
-        print(f"saved session {sid} ({outcome}, {stopped_at / 60000:.0f} min)")
+        saved = f"saved session {sid} ({outcome}, {stopped_at / 60000:.0f} min)"
+        if run:     # on the line under the box, where the next round's rendering and then the box itself go
+            sys.stdout.write("\r\x1b[K" + saved)
+            sys.stdout.flush()
+        else:
+            print(saved)
     except BaseException:
         store.finish_session(con, sid, "aborted", None)
         raise
@@ -269,6 +280,8 @@ def play(mode, a, run=None):
                 os.remove(wav)
             os.rmdir(tmpdir)
     if interrupted:
+        if run:
+            print()         # off the line under the box, for the shell's prompt
         die_of_interrupt()
     return sid, outcome
 
@@ -369,4 +382,4 @@ def write_key(path, mode, config, items):
 
 
 def progress(p):
-    print(f"\rrendering {p:4.0%}", end="", flush=True)
+    print(f"\r\x1b[Krendering {p:4.0%}", end="", flush=True)
