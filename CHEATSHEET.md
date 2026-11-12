@@ -20,7 +20,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 | **Focus**      | `cordelia focus`                       | last focus session's settings, `--run` too      |
 |                | `cordelia focus minor`                 | each degree ∝ 1 − recall over the last 120 q, refreshed each round; 4% at least |
 |                | &nbsp;&nbsp;`--on b3 4`                | half evenly on these, half on all; `--on` = auto again |
-|                | &nbsp;&nbsp;`--run 21 --minutes 3`     | 7 rounds, mix-ups between; `--run 0` one session |
+|                | &nbsp;&nbsp;`--run 21 --minutes 3`     | 7 rounds, one box redrawn; `--run 0` one session |
 |                | &nbsp;&nbsp;degrees flags              | `--bpm` `--key` `--answer` … kept apart from degrees' |
 |                | &nbsp;&nbsp;`--by f1`                  | ∝ 1 − F1: wrongly given counts too (last; recall) |
 |                | &nbsp;recall · F1 | right / asked · 2 right / (2 right + missed + wrongly given) |
@@ -56,7 +56,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `a` aug · 1 3 #5                       | `o` dim7 · 1 b3 b5 bb7                          |
 |                | `5` 5 · 1 5                            | `h` m7b5 · 1 b3 b5 b7                           |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
-| **Any drill**  | `--run 20`                             | rounds of `--minutes` for ~20 min, mix-ups between |
+| **Any drill**  | `--run 20`                             | rounds of `--minutes` for ~20 min, one box redrawn |
 |                | `--tag headphones`                     | sticky tag; `none` clears                       |
 |                | `--seed 7`                             | same questions again                            |
 |                | `--keep-wav`                           | keep the audio in `data/sessions/`              |

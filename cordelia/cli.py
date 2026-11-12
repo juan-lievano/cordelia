@@ -181,31 +181,13 @@ def cmd_session(mode, a, focused=False):
         a.seed = None if seed is None else seed + run["round"] - 1
         sid, outcome = play(mode, a, run)
         played.append(sid)
-        last = run["round"] >= run["rounds"] or outcome != "completed"
-        print(stats.centred(stats.box("this run" if last else f"round {run['round']} / {run['rounds']} done",
-                                      round_summary(store.connect(), played))) + "\n")
-        if last:
+        if run["round"] >= run["rounds"] or outcome != "completed":
+            n, right = store.connect().execute(
+                f"SELECT count(*), sum(correct = 1) FROM answers WHERE session_id IN ({','.join('?' * len(played))})",
+                played).fetchone()
+            print(f"run: {right or 0} / {n} right" + (f" ({100 * (right or 0) / n:.0f}%)" if n else "")
+                  + f", {len(played)} round{'s' if len(played) > 1 else ''}")
             return
-
-
-def round_summary(con, sids):
-    """Right of asked in the last round and in the run so far, and the run's mix-ups, most first."""
-    marks = ",".join("?" * len(sids))
-    rows = con.execute(f"""SELECT i.session_id, i.truth, a.answer, a.correct FROM items i LEFT JOIN answers a
-                           ON a.session_id = i.session_id AND a.idx = i.idx WHERE i.session_id IN ({marks})""", sids).fetchall()
-
-    def right(rs):
-        n = sum(1 for r in rs if r[3] == 1)
-        return f"{n} / {len(rs)} right" + (f" ({100 * n / len(rs):.0f}%)" if rs else "")
-    mixups = {}
-    for _, truth, answer, correct in rows:
-        if correct != 1:
-            k = f"{truth} → {answer or stats.NONE}"
-            mixups[k] = mixups.get(k, 0) + 1
-    worst = sorted(mixups.items(), key=lambda kv: -kv[1])[:8]
-    lines = [f"round  {right([r for r in rows if r[0] == sids[-1]])}"] if len(sids) > 1 else []
-    lines += [f"run    {right(rows)}"]
-    return "\n".join(lines + (["", "mix-ups this run, asked → answered"] + [f"{k}  ×{n}" for k, n in worst] if worst else []))
 
 
 def play(mode, a, run=None):
@@ -241,12 +223,14 @@ def play(mode, a, run=None):
         tmpdir = tempfile.mkdtemp(prefix="cordelia_")
         wav = os.path.join(tmpdir, "session.wav")
     try:
+        if run and run["round"] > 1:
+            sys.stdout.write("\x1b[H\x1b[2J")      # the round before scrolls away: one box, redrawn each round
         render(score, wav, bank, progress)
         store.add_items(con, sid, items)
-        title = f"session {sid} · {mode.NAME}"
+        title = " · ".join([f"session {sid}", "focus" if config.get("focus") else mode.NAME,
+                            *([f"round {run['round']} / {run['rounds']}"] if run else [])])
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions"),
-                *([("round", f"{run['round']} / {run['rounds']}")] if run else []),
                 ("tags", ", ".join(tg) or "none")]
         status = lambda cur, n, keys, revealed: mode.status(  # noqa: E731
             cur, n, scorer.typed(keys, keymap, config["keys"]), config, items[cur - 1]["truth"] if revealed else None)

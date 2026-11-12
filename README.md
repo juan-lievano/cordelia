@@ -99,9 +99,9 @@ behind it.
 `--run 20` (any drill) plays rounds of `--minutes` back to back until about
 that long; `--run 0` is one session. Each round is an ordinary session, set
 up afresh (a new key; with an auto focus, a new focus from the answers so
-far, this round's included), and between rounds a box shows the round's and
-the run's right count and the run's mix-ups, asked → answered. Esc ends the
-run after its round.
+far, this round's included). Each round clears the screen and draws its
+session box afresh, the round in its title; after the last, one line gives
+the run's right count. Esc ends the run after its round.
 
 ### The `melody` mode
 
