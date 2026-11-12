@@ -222,11 +222,12 @@ def configure(a, last_config, rng):
 
 
 def hint(config, width):
-    """The keys, and with a sung answer each asked degree's syllable."""
+    """The keys, and with a sung answer the asked flats' syllables (do re mi go without saying)."""
     keys = f"keys 1-9 or {HOME_ROW}uy\nflat: the key twice or shifted"
-    if config.get("answer") != "sung":
+    flats = "  ".join(f"{d} {SYLLABLE[d]}" for d in degrees_of(config) if d.startswith("b"))
+    if config.get("answer") != "sung" or not flats:
         return keys
-    return keys + "\nsung: " + "  ".join(f"{d} {SYLLABLE[d]}" for d in degrees_of(config))
+    return keys + "\nflats sung: " + flats
 
 
 def status(current, n, typed, config, answer=None):
