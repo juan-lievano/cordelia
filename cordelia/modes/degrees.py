@@ -47,12 +47,14 @@ SHORTHANDS = {
 # Degree 1 is the easy one, so it turns up half as often as any other.
 WEIGHT = {"1": 1}
 DEFAULT_WEIGHT = 2
-# `cordelia focus` asks each degree of the list in proportion to its trouble, 1 - F1 over the
-# latest WINDOW questions asked of the list (so equal skill is an even mix, 1 included);
+# `cordelia focus` asks each degree of the list in proportion to its trouble over the latest
+# WINDOW questions asked of the list, 1 - recall or (`--by f1`) 1 - F1, so equal skill is an
+# even mix, 1 included;
 # `--on b3 4` instead asks half the questions evenly over the list and half over those.
 # Either way no degree gets under FLOOR of the questions.
 WINDOW = 120
 FLOOR = 0.04
+BY = ("recall", "f1")
 # Questions reach half an octave past the middle register either way: the
 # low octave asks the upper half of the scale, the high octave the lower half.
 OCTAVES = (-1, 0, 1)
@@ -224,7 +226,7 @@ def configure(a, last_config, rng):
         raise SystemExit("--minutes must be positive")
     if a.answer not in ANSWERS:
         raise SystemExit(f"--answer is {' or '.join(ANSWERS)}")
-    focus = focus_config(a.on, degrees, last_config, a.recent) if getattr(a, "focused", False) else None
+    focus = focus_config(a.on, degrees, last_config, a.recent, a.by) if getattr(a, "focused", False) else None
     return dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=a.bpm, degrees=list(degrees),
                 voice=a.voice, answer=a.answer, keys=1, focus=focus)
 
@@ -335,7 +337,8 @@ def trouble(degrees, rows):
     when it was something else) and f1 = 2 right / (2 right + missed + given), the mean of
     recall and precision (harmonic); 1 - f1 is its share of the mistakes it is in. A question
     counts its stats weight, so a focus that asks a degree more does not lower its precision
-    by itself. A degree in no question yet gets the list's f1."""
+    by itself; and recall = right / (right + missed), which a degree answered too often
+    cannot lower. A degree in no question yet gets the list's f1 and recall."""
     out = {}
     for d in degrees:
         right = sum(r["weight"] for r in rows if r["truth"] == d and r["correct"] == 1)
@@ -344,37 +347,44 @@ def trouble(degrees, rows):
         out[d] = dict(right=round(right, 2), missed=round(missed, 2), given=round(given, 2))
     seen = [v for v in out.values() if 2 * v["right"] + v["missed"] + v["given"]]
     overall = (sum(2 * v["right"] for v in seen) / sum(2 * v["right"] + v["missed"] + v["given"] for v in seen)) if seen else 1
+    asked = [v for v in out.values() if v["right"] + v["missed"]]
+    recall = (sum(v["right"] for v in asked) / sum(v["right"] + v["missed"] for v in asked)) if asked else 1
     for v in out.values():
         whole = 2 * v["right"] + v["missed"] + v["given"]
         v["f1"] = round(2 * v["right"] / whole if whole else overall, 4)
+        v["recall"] = round(v["right"] / (v["right"] + v["missed"]) if v["right"] + v["missed"] else recall, 4)
     return out
 
 
-def focus_config(words, degrees, last_config, recent):
+def focus_config(words, degrees, last_config, recent, by=None):
     """A `cordelia focus` session's focus from `--on`: degrees from the list (manual), [] auto,
-    None the last focus session's way when it asked the same list, else auto.
+    None the last focus session's way when it asked the same list, else auto; auto by `by`
+    (None: the last focus session's, else recall).
     `recent(degrees)` gives the latest questions asked of the list. What is stored says how
     it was chosen and the part of the questions it gave each degree."""
     explicit = words is not None
+    by = by or ((last_config or {}).get("focus") or {}).get("by") or BY[0]
+    if by not in BY:
+        raise SystemExit(f"--by is {' or '.join(BY)}")
     if not explicit:
         last = last_config and degrees_of(last_config) == tuple(degrees) and last_config.get("focus")
         words = last["degrees"] if last and last["how"] == "manual" else []
     if not words:
         rows = recent(degrees)[-WINDOW:]
         t = trouble(degrees, rows)
-        return dict(how="auto", window=len(rows), trouble=t, shares=shares({d: 1 - t[d]["f1"] for d in degrees}))
+        return dict(how="auto", by=by, window=len(rows), trouble=t, shares=shares({d: 1 - t[d][by] for d in degrees}))
     chosen = parse_degrees(words)
     outside = [d for d in chosen if d not in degrees]
     if outside and explicit:
         raise SystemExit(f"--on {' '.join(outside)}: not in the list ({' '.join(degrees)})")
-    return dict(how="manual", degrees=chosen,
+    return dict(how="manual", by=by, degrees=chosen,
                 shares=shares({d: 1 / len(degrees) + (1 / len(chosen) if d in chosen else 0) for d in degrees}))
 
 
 def focus_text(focus, top=None):
     """`auto · b3 24% 4 19% 5 12% …`, the degrees by their part of the questions."""
     ranked = sorted(focus["shares"].items(), key=lambda kv: -kv[1])[:top]
-    return " · ".join([focus["how"], "  ".join(f"{d} {100 * s:.0f}%" for d, s in ranked)])
+    return " · ".join([focus["how"] + (" by " + focus["by"] if focus["how"] == "auto" and "by" in focus else ""), "  ".join(f"{d} {100 * s:.0f}%" for d, s in ranked)])
 
 
 def draw(rng, degrees, count, shares=None):

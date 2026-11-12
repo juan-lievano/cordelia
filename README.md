@@ -79,12 +79,14 @@ everything before it is kept.
 
 `cordelia focus` is the degrees drill with the mix shifted toward what goes
 wrong. By default (auto) it reads the latest 120 questions asked of the same
-list and asks each degree in proportion to 1 − F1, where F1 = 2 right /
-(2 right + missed when asked + answered when it was something else): the
-degree's share of the mistakes it is in, both sides of a mix-up counting.
-Equal skill on every degree is an even mix, 1 included; no degree gets under
-4%. Each question counts its stats weight (below), so asking a degree more
-does not by itself lower its precision. `--on b3 4` instead asks half the
+list and asks each degree in proportion to 1 − recall, how often it was
+missed when asked. `--by f1` uses 1 − F1 instead, where F1 = 2 right /
+(2 right + missed when asked + answered when it was something else), so
+answering a degree too often brings it up too; with recall, answering it too
+often only brings up the degrees it was given for. Equal skill on every
+degree is an even mix, 1 included; no degree gets under 4%. Each question
+counts its stats weight (below), so asking a degree more does not by itself
+lower its precision. `--on b3 4` instead asks half the
 questions evenly over the list and half evenly over degrees of your choosing
 (they must be in the list); `--on` with nothing after it goes back to auto. Focus
 keeps its own settings: everything left off is the last focus session's
