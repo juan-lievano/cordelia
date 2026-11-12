@@ -48,11 +48,11 @@ SHORTHANDS = {
 WEIGHT = {"1": 1}
 DEFAULT_WEIGHT = 2
 # `cordelia focus` asks each degree of the list in proportion to its trouble over the latest
-# WINDOW questions asked of the list, 1 - recall or (`--by f1`) 1 - F1, so equal skill is an
+# PER_DEGREE times it was asked, 1 - recall or (`--by f1`) 1 - F1, so equal skill is an
 # even mix, 1 included;
 # `--on b3 4` instead asks half the questions evenly over the list and half over those.
 # Either way no degree gets under FLOOR of the questions.
-WINDOW = 120
+PER_DEGREE = 20
 FLOOR = 0.04
 BY = ("recall", "f1")
 # Questions reach half an octave past the middle register either way: the
@@ -332,27 +332,32 @@ def shares(weights):
 
 
 def trouble(degrees, rows):
-    """Per degree, over `rows` (questions with truth, answer, correct and weight): right
-    (asked and answered so), missed (asked and not, no answer included), given (answered so
-    when it was something else) and f1 = 2 right / (2 right + missed + given), the mean of
-    recall and precision (harmonic); 1 - f1 is its share of the mistakes it is in. A question
-    counts its stats weight, so a focus that asks a degree more does not lower its precision
-    by itself; and recall = right / (right + missed), which a degree answered too often
-    cannot lower. A degree in no question yet gets the list's f1 and recall."""
+    """Per degree, over its own latest PER_DEGREE questions among `rows` (the list's questions,
+    oldest first, with truth, answer, correct and weight), so each rests on as much evidence
+    however rarely it has come up: asked, right, missed (no answer included), given (answered
+    so when it was something else, over the same stretch of questions), recall = right /
+    asked, which answering a degree too often cannot lower, and f1 = 2 right / (2 right +
+    missed + given), the harmonic mean of recall and precision. In f1 each question counts its
+    stats weight, so a focus that asks a degree more does not lower its precision by itself.
+    A degree not yet asked gets the list's recall and f1."""
     out = {}
     for d in degrees:
-        right = sum(r["weight"] for r in rows if r["truth"] == d and r["correct"] == 1)
-        missed = sum(r["weight"] for r in rows if r["truth"] == d and r["correct"] != 1)
-        given = sum(r["weight"] for r in rows if r["answer"] == d and r["truth"] != d)
-        out[d] = dict(right=round(right, 2), missed=round(missed, 2), given=round(given, 2))
-    seen = [v for v in out.values() if 2 * v["right"] + v["missed"] + v["given"]]
-    overall = (sum(2 * v["right"] for v in seen) / sum(2 * v["right"] + v["missed"] + v["given"] for v in seen)) if seen else 1
-    asked = [v for v in out.values() if v["right"] + v["missed"]]
-    recall = (sum(v["right"] for v in asked) / sum(v["right"] + v["missed"] for v in asked)) if asked else 1
+        at = [i for i, r in enumerate(rows) if r["truth"] == d][-PER_DEGREE:]
+        mine, span = [rows[i] for i in at], rows[at[0]:] if at else []
+        wrong = [r for r in span if r["answer"] == d and r["truth"] != d]
+        right = [r for r in mine if r["correct"] == 1]
+        missed = [r for r in mine if r["correct"] != 1]
+        w = lambda rs: sum(r["weight"] for r in rs)   # noqa: E731
+        out[d] = dict(asked=len(mine), right=len(right), missed=len(missed), given=len(wrong),
+                      f1_parts=(w(right), w(missed), w(wrong)))
+    asked = [v for v in out.values() if v["asked"]]
+    recall = sum(v["right"] for v in asked) / sum(v["asked"] for v in asked) if asked else 1
+    parts = [v["f1_parts"] for v in out.values() if sum(v["f1_parts"])]
+    f1 = sum(2 * r for r, _, _ in parts) / sum(2 * r + m + g for r, m, g in parts) if parts else 1
     for v in out.values():
-        whole = 2 * v["right"] + v["missed"] + v["given"]
-        v["f1"] = round(2 * v["right"] / whole if whole else overall, 4)
-        v["recall"] = round(v["right"] / (v["right"] + v["missed"]) if v["right"] + v["missed"] else recall, 4)
+        r, m, g = v.pop("f1_parts")
+        v["recall"] = round(v["right"] / v["asked"] if v["asked"] else recall, 4)
+        v["f1"] = round(2 * r / (2 * r + m + g) if r + m + g else f1, 4)
     return out
 
 
@@ -370,9 +375,8 @@ def focus_config(words, degrees, last_config, recent, by=None):
         last = last_config and degrees_of(last_config) == tuple(degrees) and last_config.get("focus")
         words = last["degrees"] if last and last["how"] == "manual" else []
     if not words:
-        rows = recent(degrees)[-WINDOW:]
-        t = trouble(degrees, rows)
-        return dict(how="auto", by=by, window=len(rows), trouble=t, shares=shares({d: 1 - t[d][by] for d in degrees}))
+        t = trouble(degrees, recent(degrees))
+        return dict(how="auto", by=by, per_degree=PER_DEGREE, trouble=t, shares=shares({d: 1 - t[d][by] for d in degrees}))
     chosen = parse_degrees(words)
     outside = [d for d in chosen if d not in degrees]
     if outside and explicit:

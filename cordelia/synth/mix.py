@@ -14,7 +14,7 @@ from . import chord, click, tone
 from .base import SAMPLE_RATE, midi_to_freq
 from .drone import Drone
 
-MELODY_LEVEL = 0.38          # notes and clicks, on top of the drone's 0.27
+MELODY_LEVEL = 0.38          # notes and clicks, on top of the drone's 0.288
 VOICE_LEVEL = 0.22
 FADE_IN_SECONDS = 1.0        # from silence
 FADE_OUT_SECONDS = 2.0       # the drone alone, after the last note or clip
