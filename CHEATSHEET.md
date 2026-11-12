@@ -24,7 +24,8 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;degrees flags              | `--bpm` `--key` `--answer` … kept apart from degrees' |
 |                | &nbsp;&nbsp;`--by f1`                  | ∝ 1 − F1: wrongly given counts too (last; recall) |
 |                | &nbsp;recall · F1 | right / asked · 2 right / (2 right + missed + wrongly given) |
-|                | &nbsp;stats | with the plain degrees of the same list         |
+|                | &nbsp;stats | a drill of its own: `focus minor`; `--mode focus` |
+|                | &nbsp;auto reads | the list's last 120 q, degrees and focus alike  |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Melody**     | `cordelia melody`                      | last session's settings, key drawn from the list |
 |                | `cordelia melody 1 2 b3 4 5`           | degrees allowed (`8`, shorthands too)           |
@@ -68,8 +69,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Afterwards** | `cordelia stats`                       | last exercise: right% bars, trend, confusions   |
 |                | &nbsp;trend | pp per hour practised                           |
-|                | &nbsp;focused sessions | weighted back to the usual mix                  |
-|                | &nbsp;&nbsp;`--mode chords`            | last session of that mode                       |
+|                | &nbsp;&nbsp;`--mode chords`            | last session of that mode (or `focus`)          |
 |                | &nbsp;&nbsp;`--degrees minor`          | degrees sessions with exactly that list         |
 |                | &nbsp;&nbsp;`--key G`                  | only that key                                   |
 |                | &nbsp;&nbsp;`--tag x`                  | only that tag                                   |

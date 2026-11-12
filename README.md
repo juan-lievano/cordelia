@@ -85,8 +85,9 @@ missed when asked. `--by f1` uses 1 − F1 instead, where F1 = 2 right /
 answering a degree too often brings it up too; with recall, answering it too
 often only brings up the degrees it was given for. Equal skill on every
 degree is an even mix, 1 included; no degree gets under 4%. Each question
-counts its stats weight (below), so asking a degree more does not by itself
-lower its precision. `--on b3 4` instead asks half the
+counts at its degree's usual part of the questions over the part the focus
+gave it, so asking a degree more does not by itself lower its precision.
+The 120 questions are the list's in plain degrees and focus sessions alike. `--on b3 4` instead asks half the
 questions evenly over the list and half evenly over degrees of your choosing
 (they must be in the list); `--on` with nothing after it goes back to auto. Focus
 keeps its own settings: everything left off is the last focus session's
@@ -221,11 +222,11 @@ a block of braille dots scattered as densely as the share of that answer
 (any answer at all lights a dot, so an empty cell means never), twice as
 tall where the terminal has the height. Recall and precision are
 a pair of upright bars for each label, recall first; the circle of fifths
-sits in whatever width is left. A question from a focused session counts
-its degree's usual part of the questions over the part the focus gave it,
-in the histogram, the trend and the matrix, so a focus changes how often a
-degree comes up and not how right the exercise reads; the title says how
-many sessions were focused. The trend is in percentage points per hour
+sits in whatever width is left. Focus sessions are stored as degrees
+sessions with a focus in their config, and the stats keep them apart as a
+drill of their own (`focus minor` beside `degrees minor`; `--mode focus`),
+since a mix that chases what goes wrong reads differently; an auto focus
+still reads the list's questions from both. The trend is in percentage points per hour
 practised: the earlier sessions' minutes, then how far into its own session
 the question came.
 `--mode`, `--degrees`, `--key` and `--tag` pick a different last session,

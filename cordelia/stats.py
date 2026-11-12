@@ -38,7 +38,10 @@ DOT = {(0, 0): 0x01, (0, 1): 0x02, (0, 2): 0x04, (0, 3): 0x40,     # (column, ro
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
-    """One row per question asked in a finished session; mode None is every mode."""
+    """One row per question asked in a finished session; mode None is every mode. `focus` is
+    the degrees sessions with a focus (`cordelia focus`), `degrees` those without."""
+    focused = {"focus": True, "degrees": False}.get(mode)
+    mode = "degrees" if mode == "focus" else mode
     sql = """SELECT s.id, s.started_at_ms, s.mode, s.config, s.tags, s.stopped_at_ms,
                     i.truth, i.meta, i.ask_ms, a.answer, a.correct, a.latency_ms
              FROM items i JOIN sessions s ON s.id = i.session_id
@@ -48,6 +51,8 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
     rows = []
     for sid, started, smode, config, tags, stopped, truth, meta, ask, answer, correct, latency in con.execute(sql, (mode, mode)):
         cfg, tg = json.loads(config), json.loads(tags)
+        if focused is not None and bool(cfg.get("focus")) != focused:
+            continue
         if degrees and (smode != "degrees" or degrees_of(cfg) != degrees):
             continue
         if key and cfg.get("key", "").lower() != key.lower():
@@ -61,9 +66,9 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
 
 
 def weight(cfg, truth):
-    """How much a question counts: 1, but in a focused session its degree's usual part of the
-    questions over the part the focus gave it, so a focus changes how often a degree is
-    asked and not how right the exercise looks."""
+    """How much a question counts toward an auto focus's precision: 1, but in a focused session
+    its degree's usual part of the questions over the part the focus gave it, so asking a
+    degree more does not by itself make it look over-answered. The stats count every question once."""
     focus = cfg.get("focus")
     return usual(degrees_of(cfg))[truth] / focus["shares"][truth] if focus else 1
 
@@ -75,7 +80,8 @@ def exercise(mode, cfg, brief=False):
     names a list by its scale (`minor 8`), for a title; rows are grouped by the full one."""
     m = MODES.get(mode)
     parts = m.exercise(cfg, brief) if m else ([str(cfg["level"])] if cfg.get("level") is not None else [])
-    return " · ".join([" ".join([mode, *parts[:1]]), *parts[1:]])
+    name = "focus" if mode == "degrees" and cfg.get("focus") else mode     # a drill of its own in the stats
+    return " · ".join([" ".join([name, *parts[:1]]), *parts[1:]])
 
 
 def table(headers, rows, dividers=(0,)):
@@ -101,12 +107,9 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
     n = len(ex_rows)
     bars = bar_count(n)
     per_bar = "a bar per q" if n <= bars else f"each bar the mean of ~{n / bars:.0f}"
-    right = 100 * sum(r["weight"] for r in ex_rows if r["correct"] == 1) / sum(r["weight"] for r in ex_rows)
+    right = 100 * sum(1 for r in ex_rows if r["correct"] == 1) / n
     title = f"{exercise(ex_rows[-1]['mode'], ex_rows[-1]['config'], brief=True)} · {n} q · {right:.0f}% right · {per_bar}"
-    focused = len({r["sid"] for r in ex_rows if r["config"].get("focus")})
-    if focused:
-        title += f" · {focused} focused sessions, weighted to the usual mix"
-    trend = slope(practised(ex_rows), [100 * (r["correct"] == 1) for r in ex_rows], [r["weight"] for r in ex_rows])
+    trend = slope(practised(ex_rows), [100 * (r["correct"] == 1) for r in ex_rows])
     if trend is not None:
         b, se = trend
         title += f" · trend {sig2(b, '+')} ± {sig2(se)} pp / hour"
@@ -185,24 +188,22 @@ def centred(text):
     return "\n".join(margin + l for l in lines)
 
 
-def slope(xs, ys, ws=None):
-    """Least-squares slope of ys over xs, each point counting its weight (1 each by default),
-    and its standard error, fitted to every point (not the bars); None when the fit is
-    undefined. The error takes the points as independent, which they are not quite (a bad
-    day is a run of them); grouping them by session instead (2026-11-12) moved it by 5%."""
+def slope(xs, ys):
+    """Least-squares slope of ys over xs and its standard error, fitted to every point
+    (not the bars); None when the fit is undefined. The error takes the points as
+    independent, which they are not quite (a bad day is a run of them); grouping them by
+    session instead (2026-11-12) moved it by 5%."""
     xs, ys = list(xs), list(ys)
-    ws = [1] * len(xs) if ws is None else list(ws)
-    n, sw = len(xs), sum(ws)
+    n = len(xs)
     if n < 3:
         return None
-    mx = sum(w * x for w, x in zip(ws, xs)) / sw
-    my = sum(w * y for w, y in zip(ws, ys)) / sw
-    sxx = sum(w * (x - mx) ** 2 for w, x in zip(ws, xs))
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
     if not sxx:
         return None
-    b = sum(w * (x - mx) * (y - my) for w, x, y in zip(ws, xs, ys)) / sxx
-    rss = sum(w * (y - my - b * (x - mx)) ** 2 for w, x, y in zip(ws, xs, ys))
-    return b, math.sqrt(rss / (n - 2) * n / sw / sxx)
+    b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
+    rss = sum((y - my - b * (x - mx)) ** 2 for x, y in zip(xs, ys))
+    return b, math.sqrt(rss / (n - 2) / sxx)
 
 
 def practised(rows):
@@ -230,7 +231,7 @@ def histogram(rows, bars):
     bins = [[] for _ in range(bars)]
     for i, r in enumerate(rows):
         bins[i * bars // n].append(r)
-    pcts = [100 * sum(r["weight"] for r in b if r["correct"] == 1) / sum(r["weight"] for r in b) if b else None for b in bins]
+    pcts = [100 * sum(1 for r in b if r["correct"] == 1) / len(b) if b else None for b in bins]
     out = []
     rows_ = ROWS if lines() >= SHORT else ROWS // 2
     for level in range(rows_, 0, -1):
@@ -251,13 +252,13 @@ def soft(text):
 
 def tally(rows):
     """The labels asked, in the mode's LABELS order, and for each how often every one of them
-    was the answer, a question counting its weight. An answer that is none of them (a slip of the hand; a pass, before
+    was the answer. An answer that is none of them (a slip of the hand; a pass, before
     2026-11-03) counts with no answer, under NONE."""
     order = list(MODES[rows[0]["mode"]].LABELS)
     labels = sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
     counts = {l: dict.fromkeys([*labels, NONE], 0) for l in labels}
     for r in rows:
-        counts[r["truth"]][r["answer"] if r["answer"] in labels else NONE] += r["weight"]
+        counts[r["truth"]][r["answer"] if r["answer"] in labels else NONE] += 1
     return labels, counts
 
 

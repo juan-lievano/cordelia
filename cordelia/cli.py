@@ -68,7 +68,7 @@ def main(argv=None):
     session_flags(c)
 
     s = sub.add_parser("stats", help="the last exercise played: a right%% histogram, degree and chord confusions")
-    s.add_argument("--mode", default="all", help=" | ".join(MODES) + " | all (default: every mode in turn)")
+    s.add_argument("--mode", default="all", help=" | ".join([*MODES, "focus"]) + " | all (default: every mode in turn)")
     s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="degrees sessions that asked exactly this list")
     s.add_argument("--key")
     s.add_argument("--tag")
@@ -195,7 +195,7 @@ def play(mode, a, run=None):
     con = store.connect()
     last = last_config(con, mode, a.focused)
     remember(a, mode.DEFAULTS, last)
-    a.recent = lambda degs: stats.load(con, mode.NAME, degs)
+    a.recent = lambda degs: stats.load(con, None, degs)      # the list's questions, focused or not
     config = mode.configure(a, last, random.Random(a.seed))
     if run:
         config["run"] = dict(run)
