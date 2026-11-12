@@ -89,11 +89,10 @@ counts at its degree's usual part of the questions over the part the focus
 gave it, so asking a degree more does not by itself lower its precision.
 The 120 questions are the list's in plain degrees and focus sessions alike. `--on b3 4` instead asks half the
 questions evenly over the list and half evenly over degrees of your choosing
-(they must be in the list); `--on` with nothing after it goes back to auto. Focus
-keeps its own settings: everything left off is the last focus session's
+(they must be in the list); `--on` with nothing after it goes back to auto. Its
+sessions are stored under mode `focus`. Focus keeps its own settings: everything left off is the last focus session's
 (before the first, the last degrees session's), `--run` included, and plain
-`cordelia degrees` remembers only unfocused sessions. The sessions are
-degrees sessions all the same, and the config stores how the focus was
+`cordelia degrees` remembers only its own sessions. The config stores how the focus was
 chosen, the part of the questions each degree got and, for auto, the counts
 behind it.
 
@@ -222,8 +221,9 @@ a block of braille dots scattered as densely as the share of that answer
 (any answer at all lights a dot, so an empty cell means never), twice as
 tall where the terminal has the height. Recall and precision are
 a pair of upright bars for each label, recall first; the circle of fifths
-sits in whatever width is left. Focus sessions are stored as degrees
-sessions with a focus in their config, and the stats keep them apart as a
+sits in whatever width is left. Focus sessions are stored under mode
+`focus` (degrees questions, a focus in the config; sessions 240-244 were
+moved there from `degrees` on 2026-11-12), and the stats keep them apart as a
 drill of their own (`focus minor` beside `degrees minor`; `--mode focus`),
 since a mix that chases what goes wrong reads differently; an auto focus
 still reads the list's questions from both. The trend is in percentage points per hour

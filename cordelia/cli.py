@@ -14,7 +14,7 @@ import time
 
 from . import journal, scorer, stats, store
 from .collector import collect
-from .modes import MODES, chords, degrees, melody
+from .modes import DRILLS, MODES, chords, degrees, melody
 from .synth import render
 from .voice import SINGERS
 
@@ -68,7 +68,7 @@ def main(argv=None):
     session_flags(c)
 
     s = sub.add_parser("stats", help="the last exercise played: a right%% histogram, degree and chord confusions")
-    s.add_argument("--mode", default="all", help=" | ".join([*MODES, "focus"]) + " | all (default: every mode in turn)")
+    s.add_argument("--mode", default="all", help=" | ".join(DRILLS) + " | all (default: every mode in turn)")
     s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="degrees sessions that asked exactly this list")
     s.add_argument("--key")
     s.add_argument("--tag")
@@ -126,11 +126,7 @@ def degree_flags(p):
 def last_config(con, mode, focused):
     """The settings a session starts from: the last session's of the drill; for degrees the
     last one without a focus, and for `focus` the last one with (before the first, degrees')."""
-    sid = None
-    if mode is degrees:
-        sid = store.last_session_id(con, mode.NAME, focused) or (focused and store.last_session_id(con, mode.NAME, False))
-    else:
-        sid = store.last_session_id(con, mode.NAME)
+    sid = (focused and store.last_session_id(con, "focus")) or store.last_session_id(con, mode.NAME)
     s = store.session(con, sid or 0)
     return s and s["config"]
 
@@ -210,7 +206,8 @@ def play(mode, a, run=None):
         return ambient(a, mode, config, score, items, bank)
 
     tg = tags(con, a.tag)
-    sid = store.new_session(con, mode.NAME, config, tg)
+    name = "focus" if config.get("focus") else mode.NAME      # the session's mode as stored
+    sid = store.new_session(con, name, config, tg)
     sdir = store.sessions_dir()
     score.to_json(sdir / f"{sid}.score.json")
     write_key(sdir / f"{sid}.key.jsonl", mode, config, items)
@@ -227,7 +224,7 @@ def play(mode, a, run=None):
             sys.stdout.write("\x1b[H\x1b[2J")      # the round before scrolls away: one box, redrawn each round
         render(score, wav, bank, progress)
         store.add_items(con, sid, items)
-        title = " · ".join([f"session {sid}", "focus" if config.get("focus") else mode.NAME,
+        title = " · ".join([f"session {sid}", name,
                             *([f"round {run['round']} / {run['rounds']}"] if run else [])])
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
         rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions"),
@@ -362,7 +359,7 @@ def cmd_rescore():
 
 def write_key(path, mode, config, items):
     with open(path, "w") as f:
-        f.write(json.dumps(dict(mode=mode.NAME, config=config)) + "\n")
+        f.write(json.dumps(dict(mode="focus" if config.get("focus") else mode.NAME, config=config)) + "\n")
         for it in items:
             f.write(json.dumps(it) + "\n")
 

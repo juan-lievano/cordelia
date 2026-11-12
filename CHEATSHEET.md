@@ -79,7 +79,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `cordelia tags`                        | sticky tags                                     |
 |                | `cordelia data`                        | data directory; `CORDELIA_DATA_DIR=…` overrides |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
-| **Data**       | `sessions`                             | session: mode, config, tags, outcome            |
+| **Data**       | `sessions`                             | session: mode (`focus` for focus), config, tags, outcome |
 |                | `items`                                | question: label, onset, window end, meta        |
 |                | `keystrokes`                           | key press: ms since playback start, key         |
 |                | `answers`                              | derived: answer, correct, latency               |

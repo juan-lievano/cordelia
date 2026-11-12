@@ -14,7 +14,7 @@ import re
 import shutil
 import sys
 
-from .modes import MODES
+from .modes import DRILLS
 from .modes.degrees import degrees_of, parse_degrees, usual
 
 BARS = 60             # most bars, where the terminal is wide enough; past that many questions, that many groups
@@ -38,10 +38,8 @@ DOT = {(0, 0): 0x01, (0, 1): 0x02, (0, 2): 0x04, (0, 3): 0x40,     # (column, ro
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
-    """One row per question asked in a finished session; mode None is every mode. `focus` is
-    the degrees sessions with a focus (`cordelia focus`), `degrees` those without."""
-    focused = {"focus": True, "degrees": False}.get(mode)
-    mode = "degrees" if mode == "focus" else mode
+    """One row per question asked in a finished session; mode None is every mode. `degrees`
+    picks a list from degrees and focus sessions alike."""
     sql = """SELECT s.id, s.started_at_ms, s.mode, s.config, s.tags, s.stopped_at_ms,
                     i.truth, i.meta, i.ask_ms, a.answer, a.correct, a.latency_ms
              FROM items i JOIN sessions s ON s.id = i.session_id
@@ -51,9 +49,7 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
     rows = []
     for sid, started, smode, config, tags, stopped, truth, meta, ask, answer, correct, latency in con.execute(sql, (mode, mode)):
         cfg, tg = json.loads(config), json.loads(tags)
-        if focused is not None and bool(cfg.get("focus")) != focused:
-            continue
-        if degrees and (smode != "degrees" or degrees_of(cfg) != degrees):
+        if degrees and (DRILLS.get(smode) is not DRILLS["degrees"] or degrees_of(cfg) != degrees):
             continue
         if key and cfg.get("key", "").lower() != key.lower():
             continue
@@ -78,10 +74,9 @@ def exercise(mode, cfg, brief=False):
     list, the level; for melody the list, then the rest of the recipe after a
     dot). A mode this version no longer has falls back to its level. `brief`
     names a list by its scale (`minor 8`), for a title; rows are grouped by the full one."""
-    m = MODES.get(mode)
+    m = DRILLS.get(mode)
     parts = m.exercise(cfg, brief) if m else ([str(cfg["level"])] if cfg.get("level") is not None else [])
-    name = "focus" if mode == "degrees" and cfg.get("focus") else mode     # a drill of its own in the stats
-    return " · ".join([" ".join([name, *parts[:1]]), *parts[1:]])
+    return " · ".join([" ".join([mode, *parts[:1]]), *parts[1:]])
 
 
 def table(headers, rows, dividers=(0,)):
@@ -115,7 +110,7 @@ def report(con, mode="all", degrees=None, key=None, tag=None):
         title += f" · trend {sig2(b, '+')} ± {sig2(se)} pp / hour"
     hist = box(title, histogram(ex_rows, bars))
     blocks = [hist]
-    if hasattr(MODES.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
+    if hasattr(DRILLS.get(ex_rows[0]["mode"]), "LABELS"):     # one label an answer: a matrix makes sense
         recent = ex_rows[-RECENT:]
         span = f"q: {n - len(recent) + 1}-{n}"
         labels, counts = tally(recent)
@@ -254,7 +249,7 @@ def tally(rows):
     """The labels asked, in the mode's LABELS order, and for each how often every one of them
     was the answer. An answer that is none of them (a slip of the hand; a pass, before
     2026-11-03) counts with no answer, under NONE."""
-    order = list(MODES[rows[0]["mode"]].LABELS)
+    order = list(DRILLS[rows[0]["mode"]].LABELS)
     labels = sorted({r["truth"] for r in rows}, key=lambda l: (order.index(l) if l in order else len(order), l))
     counts = {l: dict.fromkeys([*labels, NONE], 0) for l in labels}
     for r in rows:
