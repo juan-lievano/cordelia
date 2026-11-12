@@ -28,19 +28,18 @@ def main(argv=None):
     sub = p.add_subparsers(dest="cmd", required=True)
 
     d = sub.add_parser("degrees", help="scale degrees over a drone, the answer spoken after each")
-    d.add_argument("degrees", nargs="*", metavar="DEGREE",
-                   help=f"the degrees to ask, from {' '.join(degrees.SEMITONES)}; "
-                        + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
-    d.add_argument("--minutes", type=float)
-    d.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
-    d.add_argument("--bpm", type=float)
-    d.add_argument("--voice", help="a `say -v ?` voice; 'default' = system voice")
-    d.add_argument("--answer", help="spoken: the degree said, then the note again; sung: its syllable sung on the note")
-    d.add_argument("--focus", nargs="*", metavar="DEGREE",
-                   help="half the questions on these degrees of the list (the other half the usual mix); "
-                        f"auto: on the {degrees.TOP} with the most trouble in the latest {degrees.WINDOW} questions of the list; "
-                        "nothing after it: no focus (default: the last session's)")
+    degree_flags(d)
     session_flags(d)
+
+    f = sub.add_parser("focus", help="degrees with half the questions on the ones giving trouble; its own settings")
+    degree_flags(f)
+    f.add_argument("--on", nargs="*", metavar="DEGREE",
+                   help="half the questions on these degrees of the list, split evenly; nothing after it: "
+                        f"auto, half on the {degrees.TOP} with the most trouble in the latest {degrees.WINDOW} "
+                        "questions of the list, worked out afresh each round (default: the last focus session's way)")
+    session_flags(f)
+    f.epilog = ("Every setting left out is the last focus session's (before the first, the last degrees "
+                "session's), --run too; the sessions are degrees sessions, and stats keep them with their list.")
 
     m = sub.add_parser("melody", help="short melodies over a drone, sung back after each")
     m.add_argument("degrees", nargs="*", metavar="DEGREE",
@@ -84,6 +83,8 @@ def main(argv=None):
         sub.choices[a.cmd].error(f"unrecognized arguments: {' '.join(extra)}  (--help lists the flags)")
     if a.cmd in MODES:
         return cmd_session(MODES[a.cmd], a)
+    if a.cmd == "focus":
+        return cmd_session(degrees, a, focused=True)
     if a.cmd == "stats":
         return stats.report(store.connect(), a.mode, a.degrees, a.key, a.tag)
     if a.cmd == "journal":
@@ -107,6 +108,29 @@ def commit():
         return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=here, capture_output=True, text=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
+
+
+def degree_flags(p):
+    p.add_argument("degrees", nargs="*", metavar="DEGREE",
+                   help=f"the degrees to ask, from {' '.join(degrees.SEMITONES)}; "
+                        + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
+    p.add_argument("--minutes", type=float)
+    p.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
+    p.add_argument("--bpm", type=float)
+    p.add_argument("--voice", help="a `say -v ?` voice; 'default' = system voice")
+    p.add_argument("--answer", help="spoken: the degree said, then the note again; sung: its syllable sung on the note")
+
+
+def last_config(con, mode, focused):
+    """The settings a session starts from: the last session's of the drill; for degrees the
+    last one without a focus, and for `focus` the last one with (before the first, degrees')."""
+    sid = None
+    if mode is degrees:
+        sid = store.last_session_id(con, mode.NAME, focused) or (focused and store.last_session_id(con, mode.NAME, False))
+    else:
+        sid = store.last_session_id(con, mode.NAME)
+    s = store.session(con, sid or 0)
+    return s and s["config"]
 
 
 def session_flags(p):
@@ -136,15 +160,19 @@ def remember(a, defaults, last_config):
             setattr(a, name, (last_config or {}).get(name, default))
 
 
-def cmd_session(mode, a):
+def cmd_session(mode, a, focused=False):
     """One session, or with --run rounds of them, each ordinary and recorded on its own, the
-    settings worked out afresh before each (a new key, with --focus auto a new focus)."""
+    settings worked out afresh before each (a new key, with an auto focus a new focus).
+    A focus session remembers its --run too; `--run 0` is one session."""
+    a.focused = focused
+    con = store.connect()
+    last = last_config(con, mode, focused)
+    if focused and a.run is None:
+        a.run = ((last or {}).get("focus") and (last.get("run") or {}).get("minutes"))
     if not a.run or a.ambient:
         return play(mode, a)
-    con = store.connect()
-    last = store.session(con, store.last_session_id(con, mode.NAME) or 0)
-    remember(a, mode.DEFAULTS, last and last["config"])          # --minutes, so the rounds can be counted
-    run = dict(id=round(time.time() * 1000), round=0, rounds=max(1, round(a.run / a.minutes)))
+    remember(a, mode.DEFAULTS, last)          # --minutes, so the rounds can be counted
+    run = dict(id=round(time.time() * 1000), minutes=a.run, round=0, rounds=max(1, round(a.run / a.minutes)))
     seed, played = a.seed, []
     while True:
         run["round"] += 1
@@ -181,10 +209,10 @@ def round_summary(con, sids):
 def play(mode, a, run=None):
     """One session: set up, rendered, played, scored, saved. Returns (session id, outcome)."""
     con = store.connect()
-    last = store.session(con, store.last_session_id(con, mode.NAME) or 0)
-    remember(a, mode.DEFAULTS, last and last["config"])
+    last = last_config(con, mode, a.focused)
+    remember(a, mode.DEFAULTS, last)
     a.recent = lambda degs: stats.load(con, mode.NAME, degs)
-    config = mode.configure(a, last and last["config"], random.Random(a.seed))
+    config = mode.configure(a, last, random.Random(a.seed))
     if run:
         config["run"] = dict(run)
     if not degrees.MIN_BPM <= config["bpm"] <= degrees.MAX_BPM:

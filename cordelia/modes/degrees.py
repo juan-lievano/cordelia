@@ -224,7 +224,7 @@ def configure(a, last_config, rng):
         raise SystemExit("--minutes must be positive")
     if a.answer not in ANSWERS:
         raise SystemExit(f"--answer is {' or '.join(ANSWERS)}")
-    focus = focus_config(a.focus, degrees, last_config, a.recent)
+    focus = focus_config(a.on, degrees, last_config, a.recent) if getattr(a, "focused", False) else None
     return dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=a.bpm, degrees=list(degrees),
                 voice=a.voice, answer=a.answer, keys=1, focus=focus)
 
@@ -334,17 +334,15 @@ def trouble(degrees, rows):
 
 
 def focus_config(words, degrees, last_config, recent):
-    """The session's focus from `--focus` (None: the last session's when the list is the same, [] none, `auto`, or degrees
-    from the list), or None. `recent(degrees)` gives the latest questions asked of the list.
-    What is stored says how it was chosen and the parts it gave each degree."""
+    """A `cordelia focus` session's focus from `--on`: degrees from the list (manual), [] auto,
+    None the last focus session's way when it asked the same list, else auto.
+    `recent(degrees)` gives the latest questions asked of the list. What is stored says how
+    it was chosen and the part of the questions it gave each degree."""
     explicit = words is not None
-    if not explicit:        # the last session's focus, if it asked the same list
-        same = last_config and degrees_of(last_config) == tuple(degrees)
-        last = same and last_config.get("focus")
-        words = [] if not last else ["auto"] if last["how"] == "auto" else last["degrees"]
+    if not explicit:
+        last = last_config and degrees_of(last_config) == tuple(degrees) and last_config.get("focus")
+        words = last["degrees"] if last and last["how"] == "manual" else []
     if not words:
-        return None
-    if [w.lower() for w in words] == ["auto"]:
         rows = recent(degrees)[-WINDOW:]
         t = trouble(degrees, rows)
         top = sorted(degrees, key=lambda d: -t[d]["rate"])[:TOP]
@@ -352,10 +350,7 @@ def focus_config(words, degrees, last_config, recent):
     chosen = parse_degrees(words)
     outside = [d for d in chosen if d not in degrees]
     if outside and explicit:
-        raise SystemExit(f"--focus {' '.join(outside)}: not in the list ({' '.join(degrees)})")
-    chosen = [d for d in chosen if d in degrees]
-    if not chosen:
-        return None
+        raise SystemExit(f"--on {' '.join(outside)}: not in the list ({' '.join(degrees)})")
     return dict(how="manual", degrees=chosen, shares=mix(degrees, dict.fromkeys(chosen, 1)))
 
 

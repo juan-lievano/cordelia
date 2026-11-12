@@ -125,9 +125,12 @@ def session(con, sid):
                 tags=json.loads(row[4]), outcome=row[5], stopped_at_ms=row[6])
 
 
-def last_session_id(con, mode=None):
-    """The newest finished session, of `mode` when given."""
+def last_session_id(con, mode=None, focused=None):
+    """The newest finished session, of `mode` when given, and with `focused` True or False
+    only one with a focus (`cordelia focus`) or only one without."""
     where = "outcome IN ('completed','stopped')" + (" AND mode=?" if mode else "")
+    if focused is not None:
+        where += f" AND json_extract(config, '$.focus') IS {'NOT ' if focused else ''}NULL"
     row = con.execute(f"SELECT max(id) FROM sessions WHERE {where}", (mode,) if mode else ()).fetchone()
     return row[0]
 

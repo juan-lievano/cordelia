@@ -11,15 +11,19 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `--bpm 40`                             | tempo (last; 50)                                |
 |                | `--voice Samantha`                     | any `say -v ?` voice (last; system)             |
 |                | `--answer sung`                        | syllable sung on the note; `spoken` (last; spoken) |
-|                | `--focus b3 4`                         | half the q on these, half the usual mix (last, same list; none) |
-|                | `--focus auto`                         | half on the 3 worst of the last 60 q, by trouble |
-|                | &nbsp;trouble | (missed + wrongly given + 1) / (asked + 2) |
-|                | `--focus`                              | no focus                                        |
 |                | &nbsp;solfege | 1 do · 2 re · 3 mi · 4 fa · 5 so · 6 la · 7 ti |
 |                | &nbsp;flats | b2 ga · b3 nu · b5 jur · b6 ki · b7 pe         |
 |                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
 |                | &nbsp;flat | twice (`33`) or shifted (`>`) = b3; `333` = 3   |
 |                | &nbsp;counts | the last key before the voice                   |
+|   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
+| **Focus**      | `cordelia focus`                       | last focus session's settings, `--run` too      |
+|                | `cordelia focus minor`                 | half the q on the 3 worst of the last 60, by trouble, refreshed each round |
+|                | &nbsp;&nbsp;`--on b3 4`                | half on these instead, evenly; `--on` = auto again |
+|                | &nbsp;&nbsp;`--run 21 --minutes 3`     | 7 rounds, mix-ups between; `--run 0` one session |
+|                | &nbsp;&nbsp;degrees flags              | `--bpm` `--key` `--answer` … kept apart from degrees' |
+|                | &nbsp;trouble | (missed + wrongly given + 1) / (asked + 2)      |
+|                | &nbsp;stats | with the plain degrees of the same list         |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Melody**     | `cordelia melody`                      | last session's settings, key drawn from the list |
 |                | `cordelia melody 1 2 b3 4 5`           | degrees allowed (`8`, shorthands too)           |
@@ -52,7 +56,6 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `5` 5 · 1 5                            | `h` m7b5 · 1 b3 b5 b7                           |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Any drill**  | `--run 20`                             | rounds of `--minutes` for ~20 min, mix-ups between |
-|                | `degrees minor --focus auto --minutes 3 --run 21` | 7 rounds, each refocused on what you just missed |
 |                | `--tag headphones`                     | sticky tag; `none` clears                       |
 |                | `--seed 7`                             | same questions again                            |
 |                | `--keep-wav`                           | keep the audio in `data/sessions/`              |
