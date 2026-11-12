@@ -22,9 +22,8 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--on b3 4`                | half evenly on these, half on all; `--on` = auto again |
 |                | &nbsp;&nbsp;`--run 21 --minutes 3`     | 7 rounds, one box redrawn; `--run 0` one session |
 |                | &nbsp;&nbsp;degrees flags              | `--bpm` `--key` `--answer` … kept apart from degrees' |
-|                | &nbsp;&nbsp;`--by f1`                  | ∝ 1 − F1: wrongly given counts too (last; recall) |
-|                | &nbsp;&nbsp;`--by thompson`            | ∝ chance it's the weakest, Betas from the last 80 q |
-|                | &nbsp;miss rate · F1 | (missed+1)/(asked+2) · 2 right / (2 right + missed + wrongly given) |
+|                | &nbsp;&nbsp;`--by thompson`            | ∝ chance it's the weakest, Betas from the last 80 q (last; recall) |
+|                | &nbsp;miss rate | (missed+1)/(asked+2)                            |
 |                | &nbsp;stats | a drill of its own: `focus minor`; `--mode focus` |
 |                | &nbsp;auto reads | the list's q, degrees and focus alike           |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |

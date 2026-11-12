@@ -38,7 +38,7 @@ def main(argv=None):
                         "degree by its trouble (see --by), "
                         "worked out afresh each round (default: the last focus session's way)")
     f.add_argument("--by", help="auto's rule: recall, each degree by its miss rate over its own latest "
-                                f"{degrees.PER_DEGREE}; f1, by 1 - F1 (answering it when it is not counts too); thompson, "
+                                f"{degrees.PER_DEGREE}; thompson, "
                                 f"by the chance it is the weakest, from the list's latest {degrees.SHARED} "
                                 "(default: the last focus session's; recall)")
     session_flags(f)

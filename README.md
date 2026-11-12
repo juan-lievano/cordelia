@@ -83,17 +83,13 @@ wrong. By default (auto) it looks at each degree's own latest 40 questions on
 the same list, so a degree that has come up rarely rests on as much evidence
 as one that comes up often, and asks each in proportion to its miss rate,
 (missed + 1) / (asked + 2): the mean of a Beta(right + 1, missed + 1) belief
-about its recall, which more answers make surer but never more extreme.
-`--by f1` uses 1 − F1 instead, where F1 = 2 right / (2 right + missed when
-asked + answered when it was something else, over the same stretch), so
-answering a degree too often brings it up too; each question there counts at
-its degree's usual part of the questions over the part the focus gave it, so
-asking a degree more does not by itself lower its precision. `--by thompson`
+about its recall, which more answers make surer but never more extreme
+(`--by f1`, 1 − F1, was tried and dropped on 2026-11-12). `--by thompson`
 asks each degree as often as the chance that it is the weakest (Thompson
 sampling, computed once a round from 20,000 seeded draws): Betas from the
 list's latest 80 questions, so a degree with few answers among them stays
 uncertain and gets explored; it leans much harder and moves more from round
-to round. Equal skill on every degree is an even mix under all three, 1
+to round. Equal skill on every degree is an even mix under both, 1
 included; no degree gets under 4%. The questions are the list's in plain degrees and focus sessions alike. `--on b3 4` instead asks half the
 questions evenly over the list and half evenly over degrees of your choosing
 (they must be in the list); `--on` with nothing after it goes back to auto. Its

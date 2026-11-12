@@ -15,7 +15,7 @@ import shutil
 import sys
 
 from .modes import DRILLS
-from .modes.degrees import degrees_of, parse_degrees, usual
+from .modes.degrees import degrees_of, parse_degrees
 
 BARS = 60             # most bars, where the terminal is wide enough; past that many questions, that many groups
 BAR = 2               # columns wide
@@ -57,16 +57,8 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
             continue
         rows.append(dict(sid=sid, started=started, mode=smode, config=cfg, truth=truth, meta=json.loads(meta),
                          ask=ask, answer=answer, correct=correct, latency=latency, stopped=stopped,
-                         exercise=exercise(smode, cfg), weight=weight(cfg, truth)))
+                         exercise=exercise(smode, cfg)))
     return rows
-
-
-def weight(cfg, truth):
-    """How much a question counts toward an auto focus's precision: 1, but in a focused session
-    its degree's usual part of the questions over the part the focus gave it, so asking a
-    degree more does not by itself make it look over-answered. The stats count every question once."""
-    focus = cfg.get("focus")
-    return usual(degrees_of(cfg))[truth] / focus["shares"][truth] if focus else 1
 
 
 def exercise(mode, cfg, brief=False):
