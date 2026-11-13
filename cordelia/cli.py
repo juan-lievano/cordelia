@@ -81,7 +81,7 @@ def main(argv=None):
     r.add_argument("degrees", nargs="*", metavar="DEGREE", help="the degrees to hear (default: b3 4 b7)")
     r.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help="drawn from these (default: all 12)")
     r.add_argument("--bpm", type=float, default=60)
-    r.add_argument("--minutes", type=float, default=1.0, help="each part after the scales (default 1)")
+    r.add_argument("--minutes", type=float, default=2.0, help="each part after the scales (default 2)")
     r.add_argument("--repeat", type=int, default=2, help="times each group is played, named and played again (default 2)")
     r.add_argument("--voice", default="default", help="a `say -v ?` voice for the names")
     r.add_argument("--seed", type=int)
@@ -383,7 +383,8 @@ def cmd_review(a):
     track, bank, parts = review.build(degs, key, a.bpm, a.minutes, rng, store.data_dir(), max(1, a.repeat), a.voice)
     title = f"review · {' '.join(degs)} · key {key} · {a.bpm:g} bpm · {track.score.seconds / 60:.0f} min"
     top, bottom = staff.rows(key, [c for x in track.excerpts for c in x])
-    cells = min(review.CELLS, max(len(x) for x in track.excerpts))
+    cells = max(1, min(review.CELLS, max(len(x) for x in track.excerpts),
+                       (shutil.get_terminal_size().columns - 2 - 2 * stats.PAD - staff.MARGIN - 1) // staff.CELL))
     tall = shutil.get_terminal_size().lines >= top - bottom + 12
     starts = [t for _, t in parts]
 

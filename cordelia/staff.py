@@ -1,5 +1,5 @@
-"""A few bars of a grand staff drawn in characters: a row per line or space, notes as ● (○
-when held), each note's own ♭ or ♯ beside it (no key signature), ledger lines as needed, the
+"""A few bars of a grand staff drawn in characters: a row per line or space, notes as ██ blocks
+(▒▒ when held), a head as tall as a space and a little wider, like square notation, each note's own ♭ or ♯ beside it (no key signature), ledger lines as needed, the
 clefs as the letter on their line (G on treble G, F on bass F). Under each column its name.
 
 A note is spelt from its degree (the third of D is some F, whatever the flat), so the letters
@@ -13,9 +13,9 @@ BASS = (18, 20, 22, 24, 26)        # G2 B2 D3 F3 A3
 MIDDLE_C = 28
 CLEF = {32: "G", 24: "F"}
 ACCIDENTAL = {-2: "𝄫", -1: "♭", 0: "", 1: "♯", 2: "𝄪"}
-CELL = 4                           # columns per note: space, accidental, head, space
+CELL = 5                           # columns per note: space, accidental, the head's two, space
 MARGIN = 3
-HEAD, HELD = "●", "○"
+HEAD, HELD = "█", "▒"               # each drawn twice side by side
 LIT = {HEAD: "", HELD: ""}     # the sounding note, coloured once the box is drawn
 COLOUR = "\x1b[1;33m"
 
@@ -50,15 +50,16 @@ def draw(key, columns, top, bottom, lit=None, named=True, cells=16):
             cell = [fill] * CELL
             if p % 2 == 0 and not line and (p > TREBLE[-1] and max(heads) >= p or p < BASS[0] and min(heads) <= p
                                             or p == MIDDLE_C and p in heads):
-                cell[1:] = "───"
+                cell[1:] = "────"
             if p in heads:
                 head = HELD if held else HEAD
-                cell[2] = LIT[head] if start + i == lit else head
+                cell[2] = cell[3] = LIT[head] if start + i == lit else head
                 if heads[p]:
                     cell[1] = ACCIDENTAL[heads[p]]
             row += "".join(cell)
         out.append(row + fill * (CELL * (cells - len(shown)) + 1))
-    names = " " * MARGIN + "".join((name if named else "·").center(CELL) for _, _, name in shown)
+    under = lambda n: (" " * (2 if len(n) <= 2 else 1) + n).ljust(CELL)    # beneath the head's two columns
+    names = " " * MARGIN + "".join(under(name if named else "·") for _, _, name in shown)
     width = MARGIN + cells * CELL + 1
     return out + ["", names.ljust(width)]
 

@@ -31,7 +31,7 @@ CHORD_BEATS = 2
 CHORD_LEVEL = 0.55        # each of a chord's notes
 HOLD_BEATS = 3            # a listed degree held in the `held` scales, or played this many times
 DEFAULT = ("b3", "4", "b7")
-CELLS = 16                # columns of notes on the screen's staff; a longer excerpt scrolls
+CELLS = 15                # most columns of notes on the screen's staff; a longer excerpt scrolls
 
 
 def minor(degrees):
@@ -75,10 +75,10 @@ class Track(Builder):
         """Played a beat each, a pause, the names said, played again; `repeat` times."""
         x = self.excerpt([self.column([q]) for q in notes])
         beats = 2 if len(notes) == 1 else 1
-        for n in range(self.repeat):
+        for _ in range(self.repeat):
             for i, q in enumerate(notes):
-                t = self.note(t, *q, beats, mark=(x, i, n > 0))     # named once it has been said
-            self.events.append((t, x, None, n > 0))
+                t = self.note(t, *q, beats, mark=(x, i, False))
+            self.events.append((t, x, None, False))
             t = self.say(t + PAUSE_BEATS * self.beat, notes, bank, x)
             for i, q in enumerate(notes):
                 t = self.note(t, *q, beats, mark=(x, i, True))
