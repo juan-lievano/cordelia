@@ -38,16 +38,21 @@ DOT = {(0, 0): 0x01, (0, 1): 0x02, (0, 2): 0x04, (0, 3): 0x40,     # (column, ro
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
-    """One row per question asked in a finished session; mode None is every mode. `degrees`
-    picks a list from degrees and focus sessions alike."""
+    """One row per question asked in a finished session. `mode` is one mode, a tuple of
+    modes, or None for every mode; `degrees` picks a list within those. Degrees and focus
+    are separate drills: rows carry their mode and are grouped by exercise, and a caller
+    that wants both pooled names both, as the auto focus does."""
+    modes = None if mode is None else ((mode,) if isinstance(mode, str) else tuple(mode))
     sql = """SELECT s.id, s.started_at_ms, s.mode, s.config, s.tags, s.stopped_at_ms,
                     i.truth, i.meta, i.ask_ms, a.answer, a.correct, a.latency_ms
              FROM items i JOIN sessions s ON s.id = i.session_id
              LEFT JOIN answers a ON a.session_id = i.session_id AND a.idx = i.idx
-             WHERE (? IS NULL OR s.mode = ?) AND s.outcome IN ('completed', 'stopped')
+             WHERE s.outcome IN ('completed', 'stopped')
              ORDER BY s.started_at_ms, i.idx"""
     rows = []
-    for sid, started, smode, config, tags, stopped, truth, meta, ask, answer, correct, latency in con.execute(sql, (mode, mode)):
+    for sid, started, smode, config, tags, stopped, truth, meta, ask, answer, correct, latency in con.execute(sql):
+        if modes and smode not in modes:
+            continue
         cfg, tg = json.loads(config), json.loads(tags)
         if degrees and (DRILLS.get(smode) is not DRILLS["degrees"] or degrees_of(cfg) != degrees):
             continue
@@ -83,7 +88,10 @@ def table(headers, rows, dividers=(0,)):
 
 
 def report(con, mode="all", degrees=None, key=None, tag=None):
-    """The exercise of the last session played, within the filters."""
+    """The exercise of the last session played, within the filters. `--degrees` (a list,
+    or none for the last one played) means the degrees drill; focus needs `--mode focus`."""
+    if degrees is not None and mode == "all":
+        mode = "degrees"
     degrees = parse_degrees(degrees) if degrees else None
     rows = load(con, None if mode == "all" else mode, degrees, key, tag)
     if not rows:

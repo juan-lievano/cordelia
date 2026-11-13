@@ -79,7 +79,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 | **Afterwards** | `cordelia stats`                       | last exercise: right% bars, trend, confusions   |
 |                | &nbsp;trend | pp per hour practised                           |
 |                | &nbsp;&nbsp;`--mode chords`            | last session of that mode (or `focus`)          |
-|                | &nbsp;&nbsp;`--degrees minor`          | degrees sessions with exactly that list         |
+|                | &nbsp;&nbsp;`--degrees minor`          | degrees drill only, exactly that list; bare `--degrees`: its last list; focus: add `--mode focus` |
 |                | &nbsp;&nbsp;`--key G`                  | only that key                                   |
 |                | &nbsp;&nbsp;`--tag x`                  | only that tag                                   |
 |                | &nbsp;confusions | rows asked, latest 500 q; degrees and chords    |
@@ -95,3 +95,4 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `keystrokes`                           | key press: ms since playback start, key         |
 |                | `answers`                              | derived: answer, correct, latency               |
 |                | `sqlite3 $(cordelia data)/cordelia.db` | open the database                               |
+|                | &nbsp;separate drills                   | `degrees` and `focus` never pooled in an analysis; only the auto focus reads both |

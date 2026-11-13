@@ -71,7 +71,7 @@ def main(argv=None):
 
     s = sub.add_parser("stats", help="the last exercise played: a right%% histogram, degree and chord confusions")
     s.add_argument("--mode", default="all", help=" | ".join(DRILLS) + " | all (default: every mode in turn)")
-    s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="degrees sessions that asked exactly this list")
+    s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="the degrees drill, the sessions that asked exactly this list (none: the last list played); with --mode focus, focus sessions")
     s.add_argument("--key")
     s.add_argument("--tag")
 
@@ -207,7 +207,7 @@ def play(mode, a, run=None):
     con = store.connect()
     last = last_config(con, mode, a.focused)
     remember(a, mode.DEFAULTS, last)
-    a.recent = lambda degs: stats.load(con, None, degs)      # the list's questions, focused or not
+    a.recent = lambda degs: stats.load(con, ("degrees", "focus"), degs)   # pooled on purpose: the list's questions, focused or not
     config = mode.configure(a, last, random.Random(a.seed))
     if run:
         config["run"] = dict(run)

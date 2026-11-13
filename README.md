@@ -80,8 +80,8 @@ likely except degree 1, asked half as often; nothing is avoided but the exact
 same question twice in a row. Esc stops;
 everything before it is kept.
 
-`cordelia focus` is the degrees drill with the mix shifted toward what goes
-wrong. By default (auto) it looks at each degree's own latest 40 questions on
+`cordelia focus` asks degrees questions with the mix shifted toward what goes
+wrong, and is a drill of its own: its sessions are never pooled with `degrees` ones in an analysis. By default (auto) it looks at each degree's own latest 40 questions on
 the same list, so a degree that has come up rarely rests on as much evidence
 as one that comes up often, and asks each in proportion to its miss rate,
 (missed + 1) / (asked + 2): the mean of a Beta(right + 1, missed + 1) belief
