@@ -100,7 +100,7 @@ def settings(config):
              ("step", "any move" if config["step"] is None else f"{config['step']:g}"))
     return [("key", key_text(config)), ("degrees", " ".join(config["degrees"])),
             ("length", f"{config['length']} notes"), moves, ("hearings", f"{config['hearings']}"),
-            ("bpm", f"{config['bpm']:g}"), ("singer", config.get("singer", "jennifer"))]
+            ("bpm", f"{config['bpm']:g}"), ("answer", "sung"), ("singer", config.get("singer", "jennifer"))]
 
 
 class Builder:
