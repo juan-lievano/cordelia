@@ -12,7 +12,7 @@ import tempfile
 import textwrap
 import time
 
-from . import history, journal, review, scorer, stats, store
+from . import history, journal, review, scorer, staff, stats, store
 from .collector import collect
 from .modes import DRILLS, MODES, chords, degrees, melody
 from .synth import render
@@ -373,21 +373,41 @@ def ambient(a, mode, config, score, items, bank):
 
 
 def cmd_review(a):
-    """The review track, rendered to a temporary file, played, deleted; the part on now shown."""
+    """The review track, rendered to a temporary file, played, deleted; the box redrawn in place
+    with the part on now and, where the terminal is tall enough, the notes on a staff."""
     rng = random.Random(a.seed)
     degs = list(degrees.parse_degrees(a.degrees)) if a.degrees else list(review.DEFAULT)
     key = rng.choice(degrees.key_pool(a.key_pool) if a.key_pool else degrees.NOTE_NAMES)
-    score, bank, parts = review.build(degs, key, a.bpm, a.minutes, rng, store.data_dir())
+    track, bank, parts = review.build(degs, key, a.bpm, a.minutes, rng, store.data_dir())
+    title = f"review · {' '.join(degs)} · key {key} · {a.bpm:g} bpm · {track.score.seconds / 60:.0f} min"
+    top, bottom = staff.rows(key, [c for x in track.excerpts for c in x])
+    cells = min(review.CELLS, max(len(x) for x in track.excerpts))
+    tall = shutil.get_terminal_size().lines >= top - bottom + 12
+    starts = [t for _, t in parts]
+
+    def frame(i):
+        t, x, lit, named = track.events[i - 1] if i else (0, 0, None, True)
+        on = sum(1 for s in starts if s <= t) - 1
+        body = "  ".join(("▸" if j == on else " ") + name for j, (name, _) in enumerate(parts))
+        if tall:
+            body += "\n\n" + "\n".join(staff.draw(key, track.excerpts[x], top, bottom, lit, named, cells))
+        return staff.colour(stats.centred(stats.box(title, body + "\n\nEsc stops.")))
+
+    height = [0]
+    def show(text):
+        up = f"\x1b[{height[0]}A\r" if height[0] else ""
+        sys.stdout.write(up + "".join(l + "\x1b[K\n" for l in text.split("\n")))
+        height[0] = text.count("\n") + 1
+
     tmpdir = tempfile.mkdtemp(prefix="cordelia_")
     wav = os.path.join(tmpdir, "review.wav")
     try:
-        render(score, wav, bank, progress)
-        title = f"review · {' '.join(degs)} · key {key} · {a.bpm:g} bpm · {score.seconds / 60:.0f} min"
-        body = "  ".join(name for name, _ in parts) + "\n\nEsc stops."
-        print("\r\x1b[K\n" + stats.centred(stats.box(title, body)) + "\n")
-        status = lambda cur, n, typed, rev: f"{cur} / {n}  {parts[cur - 1][0]}" if cur else ""
-        _, outcome, _ = collect(wav, [round(t * 1000) for _, t in parts], status,
-                                lambda line: sys.stdout.write("\r\x1b[K" + line))
+        render(track.score, wav, bank, progress)
+        sys.stdout.write("\r\x1b[K\n")
+        if not tall:
+            print(f"(a terminal {top - bottom + 12} lines tall shows the notes on a staff)")
+        _, outcome, _ = collect(wav, [round(e[0] * 1000) for e in track.events],
+                                lambda i, n, typed, revealed: frame(i), show)
     finally:
         if os.path.exists(wav):
             os.remove(wav)

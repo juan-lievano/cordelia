@@ -73,6 +73,8 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--bpm 50` `--key G A`     | tempo (60); keys drawn from (all 12)            |
 |                | &nbsp;parts                            | cadence · scale · held · tonic · pairs · one way · free · singles |
 |                | &nbsp;groups                           | played, sung in solfege, played again           |
+|                | &nbsp;cadence                          | i iv V i, then i VI VII i (major: I IV V I)     |
+|                | &nbsp;screen                           | the notes on a staff as they sound (tall terminal) |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Afterwards** | `cordelia stats`                       | last exercise: right% bars, trend, confusions   |
 |                | &nbsp;trend | pp per hour practised                           |
