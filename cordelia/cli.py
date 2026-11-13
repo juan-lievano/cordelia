@@ -241,7 +241,7 @@ def play(mode, a, run=None):
         title = " · ".join([f"session {sid}", name,
                             *([f"round {run['round']} / {run['rounds']}"] if run else [])])
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
-        rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions"),
+        rows = [*mode.settings(config), ("minutes", f"{score.seconds / 60:.0f} ({len(items)} questions)"),
                 ("tags", ", ".join(tg) or "none")]
         status = lambda cur, n, keys, revealed: mode.status(  # noqa: E731
             cur, n, scorer.typed(keys, keymap, config["keys"]), config, items[cur - 1]["truth"] if revealed else None)
@@ -362,7 +362,7 @@ def ambient(a, mode, config, score, items, bank):
         render(score, wav, bank, progress)
         title = f"ambient · {mode.NAME} · not recorded"
         width = shutil.get_terminal_size().columns - 2 - 2 * stats.PAD
-        rows = [*mode.settings(config), ("length", f"{score.seconds / 60:.0f} min, {len(items)} questions")]
+        rows = [*mode.settings(config), ("minutes", f"{score.seconds / 60:.0f} ({len(items)} questions)")]
         print("\r\x1b[K\n" + stats.centred(stats.box(title, settings_table(rows, width) + "\n\nEsc stops.")) + "\n")
         _, outcome, _ = collect(wav, [round(it["ask_s"] * 1000) for it in items])
     finally:

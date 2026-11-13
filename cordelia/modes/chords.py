@@ -95,7 +95,7 @@ def exercise(config, brief=False):
 
 def settings(config):
     """The session's settings for its box, as (name, value) rows."""
-    return [("level", f"{config['level']}: {LEVELS[config['level']]['about']}"), ("tempo", f"{config['bpm']:g} BPM"),
+    return [("level", f"{config['level']}: {LEVELS[config['level']]['about']}"), ("bpm", f"{config['bpm']:g}"),
             ("voice", config.get("voice", "default"))]
 
 

@@ -18,7 +18,7 @@ ROWS = 25             # the most recent combinations shown
 LIST = ("degrees", lambda c: short(degrees_of(c)))
 KEYS = ("keys", lambda c: "all" if len(c.get("key_pool") or []) == 12 else " ".join(c["key_pool"]) if c.get("key_pool") else "")
 BPM = ("bpm", lambda c: f"{c['bpm']:g}")
-MINUTES = ("min", lambda c: f"{c['minutes']:g}")
+MINUTES = ("minutes", lambda c: f"{c['minutes']:g}")
 SETTINGS = {
     "degrees": [LIST, BPM, MINUTES, ("answer", lambda c: c.get("answer", "spoken")), ("voice", lambda c: c.get("voice", "")), KEYS],
     "focus": [LIST, ("focus", lambda c: f"on {' '.join(c['focus']['degrees'])}" if c["focus"]["how"] == "manual"
@@ -26,8 +26,8 @@ SETTINGS = {
               BPM, MINUTES, ("run", lambda c: f"{c['run']['minutes']:g}" if c.get("run") else ""),
               ("answer", lambda c: c.get("answer", "spoken")), ("voice", lambda c: c.get("voice", "")), KEYS],
     "melody": [("degrees", lambda c: short(c["degrees"]) if c.get("degrees") else ""),
-               ("notes", lambda c: str(c.get("length", ""))), ("spread", lambda c: f"{c['spread']:g}" if "spread" in c else ""),
-               ("heard", lambda c: str(c.get("hearings", ""))), BPM, MINUTES, ("singer", lambda c: c.get("singer", "")), KEYS],
+               ("length", lambda c: str(c.get("length", ""))), ("spread", lambda c: f"{c['spread']:g}" if "spread" in c else ""),
+               ("hearings", lambda c: str(c.get("hearings", ""))), BPM, MINUTES, ("singer", lambda c: c.get("singer", "")), KEYS],
     "chords": [("level", lambda c: str(c.get("level", ""))), BPM, MINUTES, ("voice", lambda c: c.get("voice", ""))],
 }
 
@@ -67,7 +67,7 @@ def show(con, mode=None):
             + [g["sessions"], f"{g['ms'] / 6e4:.0f}", f"{100 * g['right'] / g['asked']:.0f}%" if g["asked"] else "",
                datetime.fromtimestamp(g["last"] / 1000).strftime("%b %d %H:%M")]
             for combo, g in recent[:ROWS]]
-    body = table([names[i] for i in varied] + ["sessions", "minutes", "right", "last"], rows, dividers=(len(varied) - 1,))
+    body = table([names[i] for i in varied] + ["sessions", "played", "right", "last"], rows, dividers=(len(varied) - 1,))
     more = len(recent) - ROWS
     title = " · ".join([f"{mode} history", *fixed, f"{len(recent)} settings"] + ([f"the latest {ROWS} shown"] if more > 0 else []))
     print("\n" + centred(box(title, body)) + "\n")

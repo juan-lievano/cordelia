@@ -206,8 +206,8 @@ def settings(config):
     """The session's settings for its box, as (name, value) rows."""
     return [("key", key_text(config)), ("degrees", " ".join(degrees_of(config))),
             *([("focus", focus_text(config["focus"]))] if config.get("focus") else []),
-            ("tempo", f"{config['bpm']:g} BPM"),
-            ("voice", SINGER + ", sung" if config.get("answer") == "sung" else config.get("voice", "default"))]
+            ("bpm", f"{config['bpm']:g}"), ("answer", config.get("answer", "spoken")),
+            ("voice", SINGER if config.get("answer") == "sung" else config.get("voice", "default"))]
 
 
 def bank(config, data_dir):

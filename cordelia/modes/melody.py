@@ -96,9 +96,11 @@ def exercise(config, brief=False):
 
 def settings(config):
     """The session's settings for its box, as (name, value) rows."""
-    degrees, melody = recipe(config)
-    return [("key", key_text(config)), ("degrees", degrees), ("melody", melody),
-            ("tempo", f"{config['bpm']:g} BPM"), ("singer", config.get("singer", "jennifer"))]
+    moves = (("spread", f"{config['spread']:g}") if "spread" in config else
+             ("step", "any move" if config["step"] is None else f"{config['step']:g}"))
+    return [("key", key_text(config)), ("degrees", " ".join(config["degrees"])),
+            ("length", f"{config['length']} notes"), moves, ("hearings", f"{config['hearings']}"),
+            ("bpm", f"{config['bpm']:g}"), ("singer", config.get("singer", "jennifer"))]
 
 
 class Builder:
