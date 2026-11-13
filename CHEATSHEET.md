@@ -72,7 +72,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--minutes 2`              | each part after the scales (default 1)          |
 |                | &nbsp;&nbsp;`--bpm 50` `--key G A`     | tempo (60); keys drawn from (all 12)            |
 |                | &nbsp;parts                            | cadence · scale · held · tonic · pairs · one way · free · singles |
-|                | &nbsp;groups                           | played, sung in solfege, played again           |
+|                | &nbsp;groups                           | played, named, played again; `--repeat 2` times           |
 |                | &nbsp;cadence                          | i iv V i, then i VI VII i (major: I IV V I)     |
 |                | &nbsp;screen                           | the notes on a staff as they sound (tall terminal) |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |

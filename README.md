@@ -30,7 +30,7 @@ python3 -m cordelia melody                         # the last melody session's s
 python3 -m cordelia melody 1 2 b3 4 5 --length 3 --spread 0.5 --key G --singer chengu
 python3 -m cordelia chords                         # the last chords session's settings (at first: 4 min, 50 BPM, level 1)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
-python3 -m cordelia review                         # listen to b3 4 b7 in a fresh key: cadence, scales, the tonic, pairs, triples, sung, on a staff as it plays; nothing recorded
+python3 -m cordelia review                         # listen to b3 4 b7 in a fresh key: cadence, scales, the tonic, pairs, triples, named, on a staff as it plays; nothing recorded
 python3 -m cordelia review b3 4 --minutes 2 --bpm 50
 python3 -m cordelia stats                          # the last exercise played: histogram, trend, confusions
 python3 -m cordelia stats --degrees minor --tag headphones

@@ -77,11 +77,13 @@ def main(argv=None):
 
     h = sub.add_parser("history", help="the settings a drill has been played with, and how long each")
     h.add_argument("mode", nargs="?", help=" | ".join(DRILLS) + " (default: the drill played last)")
-    r = sub.add_parser("review", help="a listening track for degrees you mix up: scales, the tonic, pairs, triples, sung; not recorded")
+    r = sub.add_parser("review", help="a listening track for degrees you mix up: scales, the tonic, pairs, triples, named; not recorded")
     r.add_argument("degrees", nargs="*", metavar="DEGREE", help="the degrees to hear (default: b3 4 b7)")
     r.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help="drawn from these (default: all 12)")
     r.add_argument("--bpm", type=float, default=60)
     r.add_argument("--minutes", type=float, default=1.0, help="each part after the scales (default 1)")
+    r.add_argument("--repeat", type=int, default=2, help="times each group is played, named and played again (default 2)")
+    r.add_argument("--voice", default="default", help="a `say -v ?` voice for the names")
     r.add_argument("--seed", type=int)
     sub.add_parser("journal", help="the practice wall: a column per week, a cell per day shaded by minutes")
     sub.add_parser("rescore", help="rebuild every session's answers from its key presses")
@@ -378,7 +380,7 @@ def cmd_review(a):
     rng = random.Random(a.seed)
     degs = list(degrees.parse_degrees(a.degrees)) if a.degrees else list(review.DEFAULT)
     key = rng.choice(degrees.key_pool(a.key_pool) if a.key_pool else degrees.NOTE_NAMES)
-    track, bank, parts = review.build(degs, key, a.bpm, a.minutes, rng, store.data_dir())
+    track, bank, parts = review.build(degs, key, a.bpm, a.minutes, rng, store.data_dir(), max(1, a.repeat), a.voice)
     title = f"review · {' '.join(degs)} · key {key} · {a.bpm:g} bpm · {track.score.seconds / 60:.0f} min"
     top, bottom = staff.rows(key, [c for x in track.excerpts for c in x])
     cells = min(review.CELLS, max(len(x) for x in track.excerpts))

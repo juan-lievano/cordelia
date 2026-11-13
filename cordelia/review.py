@@ -11,21 +11,22 @@ The parts, in order (each one that isn't a fixed length lasts --minutes):
   free         three notes in any order, no step over a fifth, 1 sometimes
   singles      each degree in all three octaves
 The scales are only played: counting from 1 says what each note is. A group in the later
-parts is played, then sung in solfege on its own notes, then played again. The screen
+parts is played, its names said, and played again, the whole of it --repeat times. The screen
 shows it on a staff as it plays (cordelia/staff.py).
 """
 
+import math
+
 from .modes.degrees import (INTRO_BEATS, NOTE_NAMES, OCTAVE_LEVELS, OUTRO_SECONDS, PAUSE_BEATS, REST_BEATS,
-                            RING, SEMITONES, SHORTHANDS, SINGER, SUNG_LEVEL, Builder)
+                            RING, SEMITONES, SHORTHANDS, Builder, spoken)
 from .score import Clip, Note
-from .voice import SungBank, sung_label
+from .voice import VoiceBank
 
 OCTAVES = (-1, 0, 1)
 TONIC_SHARE = 0.25        # how often a note of a triple may be 1
 MAX_STEP = 7              # semitones, between neighbours in a free triple
 SPAN = 12                 # a pair, or a one-way triple, spans less than this
-SUNG_OVERLAP = 0.06       # a sung note holds this far past the next one's vowel
-SUNG_RING = 1.5           # the last sung note of a group rings this long at most
+WORD_GAP = 0.15           # seconds between one said name and the next
 CHORD_BEATS = 2
 CHORD_LEVEL = 0.55        # each of a chord's notes
 HOLD_BEATS = 3            # a listed degree held in the `held` scales, or played this many times
@@ -41,9 +42,9 @@ class Track(Builder):
     """The score, and what the screen shows along with it: `excerpts`, each a list of columns
     (notes [(label, midi)], held, name), and `events` (t, excerpt, column sounding, named)."""
 
-    def __init__(self, degrees, key, bpm, minutes, rng):
-        super().__init__(dict(key=key, bpm=bpm, answer="sung"), _NoBank())   # the bank comes per call
-        self.degrees, self.rng, self.seconds = list(degrees), rng, minutes * 60
+    def __init__(self, degrees, key, bpm, minutes, rng, repeat):
+        super().__init__(dict(key=key, bpm=bpm, answer="spoken"), _NoBank())   # the bank comes per call
+        self.degrees, self.rng, self.seconds, self.repeat = list(degrees), rng, minutes * 60, repeat
         self.scale = sorted(set(SHORTHANDS["minor" if minor(degrees) else "major"]) | set(degrees), key=lambda d: SEMITONES[d])
         self.excerpts, self.events = [], []
 
@@ -61,28 +62,29 @@ class Track(Builder):
         self.score.notes.append(Note(t, beats * self.beat + RING, self.midi(d, o), OCTAVE_LEVELS.get(o, 0.9)))
         return t + beats * self.beat
 
-    def sing(self, t, notes, bank, x):
-        for i, (d, o) in enumerate(notes):
-            label = sung_label(d, self.midi(d, o))
-            lead = bank.lead(label)
-            dur = lead + (SUNG_RING if i == len(notes) - 1 else self.beat + SUNG_OVERLAP)
-            self.score.clips.append(Clip(t - lead, label, SUNG_LEVEL, dur))
+    def say(self, t, notes, bank, x):
+        """The names one after another, then on to the next beat."""
+        start = t
+        for i, (d, _) in enumerate(notes):
+            self.score.clips.append(Clip(t, d))
             self.events.append((t, x, i, True))
-            t += self.beat
-        return t + self.beat
+            t += bank.seconds(d) + WORD_GAP
+        return start + math.ceil((t - start) / self.beat) * self.beat
 
     def group(self, t, notes, bank):
-        """Played a beat each, a pause, sung, played again."""
+        """Played a beat each, a pause, the names said, played again; `repeat` times."""
         x = self.excerpt([self.column([q]) for q in notes])
         beats = 2 if len(notes) == 1 else 1
-        for i, q in enumerate(notes):
-            t = self.note(t, *q, beats, mark=(x, i, False))
-        self.events.append((t, x, None, False))
-        t = self.sing(t + PAUSE_BEATS * self.beat, notes, bank, x)
-        for i, q in enumerate(notes):
-            t = self.note(t, *q, beats, mark=(x, i, True))
-        self.events.append((t, x, None, True))
-        return t + REST_BEATS * self.beat
+        for n in range(self.repeat):
+            for i, q in enumerate(notes):
+                t = self.note(t, *q, beats, mark=(x, i, n > 0))     # named once it has been said
+            self.events.append((t, x, None, n > 0))
+            t = self.say(t + PAUSE_BEATS * self.beat, notes, bank, x)
+            for i, q in enumerate(notes):
+                t = self.note(t, *q, beats, mark=(x, i, True))
+            self.events.append((t, x, None, True))
+            t += REST_BEATS * self.beat
+        return t
 
     # --- parts --------------------------------------------------------------------------
     def cadence_chords(self, t):
@@ -149,10 +151,10 @@ class _NoBank:
     name = "none"
 
 
-def build(degrees, key, bpm, minutes, rng, data_dir):
-    """(the Track, its sung bank, [(part name, start seconds)])."""
-    tr = Track(degrees, key, bpm, minutes, rng)
-    bank = SungBank(SINGER, data_dir)
+def build(degrees, key, bpm, minutes, rng, data_dir, repeat=2, voice="default"):
+    """(the Track, its voice bank, [(part name, start seconds)])."""
+    tr = Track(degrees, key, bpm, minutes, rng, repeat)
+    bank = VoiceBank(voice, data_dir)
     tr.score.voice = bank.name
     pitch = lambda q: tr.midi(*q)
     targets = [d for d in degrees if d != "1"] or list(degrees)
@@ -160,7 +162,7 @@ def build(degrees, key, bpm, minutes, rng, data_dir):
     tonics = [("1", o) for o in OCTAVES]
     pick = lambda: rng.choice(tonics) if rng.random() < TONIC_SHARE else rng.choice(notes)
     enough = lambda g: len({d for d, _ in g if d in targets}) > min(1, len(targets) - 1)
-    bank.ensure({sung_label(d, tr.midi(d, o)) for d in set(targets) | {"1"} for o in OCTAVES})
+    bank.ensure(spoken(sorted(set(targets) | {"1"}, key=lambda d: SEMITONES[d])))
 
     def tonic():
         d = rng.choice(targets)
