@@ -12,7 +12,7 @@ import tempfile
 import textwrap
 import time
 
-from . import history, journal, scorer, stats, store
+from . import history, journal, review, scorer, stats, store
 from .collector import collect
 from .modes import DRILLS, MODES, chords, degrees, melody
 from .synth import render
@@ -77,6 +77,12 @@ def main(argv=None):
 
     h = sub.add_parser("history", help="the settings a drill has been played with, and how long each")
     h.add_argument("mode", nargs="?", help=" | ".join(DRILLS) + " (default: the drill played last)")
+    r = sub.add_parser("review", help="a listening track for degrees you mix up: scales, the tonic, pairs, triples, sung; not recorded")
+    r.add_argument("degrees", nargs="*", metavar="DEGREE", help="the degrees to hear (default: b3 4 b7)")
+    r.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help="drawn from these (default: all 12)")
+    r.add_argument("--bpm", type=float, default=60)
+    r.add_argument("--minutes", type=float, default=1.0, help="each part after the scales (default 1)")
+    r.add_argument("--seed", type=int)
     sub.add_parser("journal", help="the practice wall: a column per week, a cell per day shaded by minutes")
     sub.add_parser("rescore", help="rebuild every session's answers from its key presses")
     sub.add_parser("tags", help="show the sticky tags")
@@ -95,6 +101,8 @@ def main(argv=None):
         return stats.report(store.connect(), a.mode, a.degrees, a.key, a.tag)
     if a.cmd == "history":
         return history.show(store.connect(), a.mode)
+    if a.cmd == "review":
+        return cmd_review(a)
     if a.cmd == "journal":
         return journal.show(store.connect())
     if a.cmd == "rescore":
@@ -360,6 +368,30 @@ def ambient(a, mode, config, score, items, bank):
             if os.path.exists(wav):
                 os.remove(wav)
             os.rmdir(tmpdir)
+    if outcome == "interrupted":
+        die_of_interrupt()
+
+
+def cmd_review(a):
+    """The review track, rendered to a temporary file, played, deleted; the part on now shown."""
+    rng = random.Random(a.seed)
+    degs = list(degrees.parse_degrees(a.degrees)) if a.degrees else list(review.DEFAULT)
+    key = rng.choice(degrees.key_pool(a.key_pool) if a.key_pool else degrees.NOTE_NAMES)
+    score, bank, parts = review.build(degs, key, a.bpm, a.minutes, rng, store.data_dir())
+    tmpdir = tempfile.mkdtemp(prefix="cordelia_")
+    wav = os.path.join(tmpdir, "review.wav")
+    try:
+        render(score, wav, bank, progress)
+        title = f"review · {' '.join(degs)} · key {key} · {a.bpm:g} bpm · {score.seconds / 60:.0f} min"
+        body = "  ".join(name for name, _ in parts) + "\n\nEsc stops."
+        print("\r\x1b[K\n" + stats.centred(stats.box(title, body)) + "\n")
+        status = lambda cur, n, typed, rev: f"{cur} / {n}  {parts[cur - 1][0]}" if cur else ""
+        _, outcome, _ = collect(wav, [round(t * 1000) for _, t in parts], status,
+                                lambda line: sys.stdout.write("\r\x1b[K" + line))
+    finally:
+        if os.path.exists(wav):
+            os.remove(wav)
+        os.rmdir(tmpdir)
     if outcome == "interrupted":
         die_of_interrupt()
 

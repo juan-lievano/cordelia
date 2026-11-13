@@ -67,6 +67,13 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `Esc`                                  | stop; everything before is kept                 |
 |                | `Ctrl-C`                               | same, and ends a `;` chain or loop              |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
+| **Review**     | `cordelia review`                      | listen to b3 4 b7; new key, nothing kept        |
+|                | &nbsp;&nbsp;`review b3 4`              | those degrees instead                           |
+|                | &nbsp;&nbsp;`--minutes 2`              | each part after the scales (default 1)          |
+|                | &nbsp;&nbsp;`--bpm 50` `--key G A`     | tempo (60); keys drawn from (all 12)            |
+|                | &nbsp;parts                            | cadence · scale · held · tonic · pairs · one way · free · singles |
+|                | &nbsp;groups                           | played, sung in solfege, played again           |
+|   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Afterwards** | `cordelia stats`                       | last exercise: right% bars, trend, confusions   |
 |                | &nbsp;trend | pp per hour practised                           |
 |                | &nbsp;&nbsp;`--mode chords`            | last session of that mode (or `focus`)          |
