@@ -235,10 +235,13 @@ def hint(config, width):
 
 
 def status(current, n, typed, config, answer=None):
+    """The question, the degrees typed, and two lines under them the melody once its singing
+    has started, as in degrees: the syllables are not always clear."""
     slots = ["_"] * config["keys"]
     for i, k in enumerate(typed):
         slots[i] = k
-    return f"{current} / {n}   [{' '.join(slots)}]"
+    head = f"{current} / {n}   "
+    return f"{head}[{' '.join(slots)}]" + ("\n\n" + " " * (len(head) + 1) + answer if answer else "")
 
 
 def build_session(config, bank, rng=None):
