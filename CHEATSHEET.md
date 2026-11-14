@@ -6,6 +6,8 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 | **Degrees**    | `cordelia degrees`                     | last session's settings, key drawn from the list |
 |                | `cordelia degrees 1 2 5 6`             | any list = an exercise                          |
 |                | `major` `minor` `all`                  | 1-7 / 1 2 b3 4 5 b6 b7 / the twelve             |
+|                | `--range 5 17`                         | semitones under and over the tonic (last; 5 17) |
+|                | `--range E1 0 12`                      | tonic E1 or first above; = `low`; `middle` G3 0 12, `high` G4 0 12, `wide` G3 5 17 |
 |                | `--minutes 5`                          | length (last; 4)                                |
 |                | `--key D Eb E F F#`                    | keys to draw from, not the last (last; all)     |
 |                | `--bpm 40`                             | tempo (last; 50)                                |
@@ -28,9 +30,9 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;auto reads | the list's q, degrees and focus alike           |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Melody**     | `cordelia melody`                      | last session's settings, key drawn from the list |
-|                | `cordelia melody 1 2 b3 4 5`           | degrees allowed (`8`, shorthands too)           |
-|                | &nbsp;&nbsp;`--octaves 2`              | 1-3, up from the tonic (last; 1)                |
-|                | &nbsp;&nbsp;`--register low`           | bass line; or `middle`, `high` (last; middle)   |
+|                | `cordelia melody 1 2 b3 4 5`           | degrees allowed (shorthands too)                |
+|                | &nbsp;&nbsp;`--range low`              | = E1 0 12, a bass line, spoken; `middle` (last; middle), `high` |
+|                | &nbsp;&nbsp;`--range E1 0 19`          | tonic E1 or first above, semitones under and over it |
 |                | &nbsp;&nbsp;`--length 3`               | notes (last; 4)                                 |
 |                | &nbsp;&nbsp;`--spread 0.5`             | 0 steps only, 1 anywhere (last; 0.2)            |
 |                | &nbsp;&nbsp;`--hearings 2`             | plays before the answer (last; 3)               |
@@ -39,7 +41,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--key G`                  | keys to draw from, not the last (last; all)     |
 |                | &nbsp;&nbsp;`--singer chengu`          | or `jennifer`; the other sings what's out of reach |
 |                | &nbsp;&nbsp;`--shape slabs`            | each note's height under the sung melody; or `braille`, `none` (last; none) |
-|                | &nbsp;exercise | list + octaves + register + length + spread + hearings |
+|                | &nbsp;exercise | list + range + length + spread + hearings |
 |                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
 |                | &nbsp;flat | shifted: `H < > N E I L Y` (`>` = b3)           |
 |                | &nbsp;counts | what stands when the singing starts             |

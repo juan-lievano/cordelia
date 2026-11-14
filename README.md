@@ -19,6 +19,7 @@ cordelia degrees minor --minutes 5
 python3 -m cordelia degrees                        # the same, from the repo
 python3 -m cordelia degrees 1 2 b3 4 5 b6 b7 --key D Eb E   # a key drawn from these each session (all = the twelve); any list of degrees is an exercise; minor = this list, all = the twelve
 python3 -m cordelia degrees 1 2 5 6                # a list never typed before is a new exercise from this session on
+python3 -m cordelia degrees minor --range 0 12     # semitones under and over the tonic: here the tonic up to its octave (at first 5 17, as it always was)
 python3 -m cordelia degrees --voice Samantha       # any `say -v ?` voice
 python3 -m cordelia focus minor --minutes 3 --run 21   # 7 rounds of 3 min, each focused on the latest trouble
 python3 -m cordelia focus minor --on b3 4          # half the questions on b3 and 4, the other half the usual mix
@@ -28,8 +29,8 @@ python3 -m cordelia degrees --midi t.mid           # also write the score as MID
 python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
 python3 -m cordelia melody                         # the last melody session's settings (at first: 5 min, four notes on 1 to 5, mostly stepwise, 55 BPM), sung back
 python3 -m cordelia melody 1 2 b3 4 5 --length 3 --spread 0.5 --key G --singer chengu
-python3 -m cordelia melody minor --octaves 2       # the list twice over, up from the tonic (1, 2 or 3 octaves)
-python3 -m cordelia melody minor --register low    # a bass line: the tonic E1 to Eb2 (low, middle or high)
+python3 -m cordelia melody minor --range low       # = E1 0 12, a bass line: the tonic (E1 to Eb2) up to its octave (middle = G3 0 12, high = G4 0 12)
+python3 -m cordelia melody minor --range E1 0 19   # the same, up to the fifth over the octave
 python3 -m cordelia chords                         # the last chords session's settings (at first: 4 min, 50 BPM, level 1)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
 python3 -m cordelia review                         # listen to b3 4 b7 in a fresh key: cadence, scales, the tonic, pairs, triples, named, on a staff as it plays; nothing recorded
@@ -57,7 +58,9 @@ Over a breathing drone, rooted two
 octaves under the middle-register tonic (C2 for C), its core steady and its
 fifths and shimmer above swelling in and out over several seconds, with
 the note timbre of the additive tone (four damped harmonics, softer as it rises). The drone fades in for a beat, then tonic, fifth and tonic an
-octave up (a beat each) set the key, and after two beats of rest the
+octave up (a beat each) set the key (when the list is `major` or `minor`, the whole scale
+instead, up to the tonic on top, over the tonic and fifth an octave down, as a melody
+session opens), and after two beats of rest the
 questions start, each at 50 BPM (1.2 s a beat; `--bpm` changes it):
 
 ```
@@ -76,8 +79,16 @@ there is no level table, `cordelia degrees 1 2 5 6` is a new exercise the
 first time it is typed, and the stats keep each list apart. Without a list
 the last degrees session's is asked again. Every degree is typeable
 whatever the list, so a ♭3 answered in a major session is recorded as ♭3.
-Registers are those of the original drill: the low octave asks the upper
-half of the scale, the high octave the lower half. Every question is equally
+`--range` says how many semitones under and over the tonic the notes go (`--range 5 17`:
+from the fifth under it to the fourth over its octave), and every note in between that is a
+degree of the list is asked, so the range moves with the key. A note before the two numbers
+is the lowest the tonic may be (`--range E1 0 12`: the tonic, E1 to Eb2, up to its octave);
+without one the tonic is the middle-register one, G3 to F#4. `low`, `middle`, `high` and `wide`
+stand for E1 0 12, G3 0 12, G4 0 12 and G3 5 17 while typing, as `minor` does for a list, and only the
+note and the numbers are stored. A range other than G3 5 17 is an exercise of its own in the
+stats. One that sits under C3 is played in the bass voice, the drone an octave up; a sung
+answer needs a range the singer has (C3 to B5). Since 2026-11-14: before, every session was
+G3 5 17, which is still where a session with no range since starts. Every question is equally
 likely except degree 1, asked half as often; nothing is avoided but the exact
 same question twice in a row. Esc stops;
 everything before it is kept.
@@ -127,7 +138,7 @@ beats 11-12   clicks
 beats 13-16   the melody once more
 beats 17-20   clicks, to think
 beats 21-24   the answer, sung a note a beat   — "do re mi do", on the melody's own pitches
-beats 25-26   rest
+beat  25      rest (two beats until 2026-11-14)
 ```
 
 Sessions before 2026-11-08 had four clicks between hearings; the commit
@@ -153,31 +164,27 @@ picks `jennifer` (default) or `chengu`, who sings every melody that stays within
 the notes they recorded; one that does not is sung by the other, or note by note by
 whoever recorded each (jennifer's samples are C3 to B5, chengu's C2 to B4, of which he is
 given G2 up: lower they are not pleasant), and a melody
-with a note under G2 or over B5 is spoken instead, a degree a beat ("one, flat three"):
+with a note under G2 or over B5, and every melody of a bass line (a range whose middle is under C3), is spoken instead, a degree a beat ("one, flat three"):
 since 2026-11-14, before which a note up to six semitones past a singer's range was still
 sung. The sung clips are made once per
 note under `data/voices/sung-<singer>/`.
 
 The recipe is given on the command line, as in the degrees mode: the
-degrees a melody may use (any of the twelve, `8` for the tonic on top, and
-the same shorthands),
-`--octaves` for how many octaves of them (1, 2 or 3), `--length` for how
+degrees a melody may use (any of the twelve, and the same shorthands),
+`--range` for how far under and over the tonic, as in the degrees mode, `--length` for how
 many notes, `--spread` for how far a move tends to go (to any other note,
 one d positions away weighing spread^(d-1): 0 is steps only, 1 any other
 note equally; the first note is uniform), and `--hearings` for
-how many times a melody is played before the answer. The octaves run up
-from the tonic, the one that puts their middle nearest G4: G3 to F#4 for
-one octave, as before there were octaves, C#3 to C4 for two, G2 to F#3 for
-three, and an octave off that where a note would otherwise be more than six
-semitones from every sample (the highest do there is to sing is F#5, so
-three octaves with an 8 sit an octave lower: G1 to F#2 up to G4 to F#5). `--register low` puts the
-octaves in the bass instead (one octave: the tonic E1 to Eb2), played with a fuller tone
-and the drone an octave up, and `--register high` an octave over the middle (the tonic G4
-to F#5); these go where asked, whatever can be sung, nothing under E1 or over C7. An
+how many times a melody is played before the answer. A melody is drawn from every note of
+the list within the range (at first `middle`: the tonic, G3 to F#4, up to its octave). A
+range that sits under C3 (`low`: the tonic, E1 to Eb2, up to its octave) is a bass line:
+played with a fuller tone, the drone an octave up, and its answers spoken. Since 2026-11-14:
+before, `--octaves` (1, 2 or 3) and `--register` (low, middle, high) put the list that many
+times over up from a tonic, and `8` in the list put the tonic on top. An
 answer is the degrees in any octave, and the melody is shown that way once
-sung (`1 7 5 6 1 6`, the 8 as 1), with `--shape slabs` or `--shape braille` a mark under
+sung (`1 7 5 6 1 6`), with `--shape slabs` or `--shape braille` a mark under
 each note as high as the note is above the melody's lowest (a level per scale step, 8 or 4 to
-a row; `none` turns it off). The five together, and the register when it is not the middle, are the exercise the stats group
+a row; `none` turns it off). The five together, the range only when it is not the middle, are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
 typed, and so is `--length 5` or `--hearings 2` on a list already played. The two numbered
 levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the
@@ -224,7 +231,7 @@ per session; `--keep-wav` keeps the audio too.
 | table        | one row per | notes |
 |--------------|-------------|-------|
 | `sessions`   | session     | mode, config as JSON (key, the degrees asked or the level, bpm, voice, focus, run and round, the keymap, seed, the commit the code was at, null if the tree was dirty), tags, outcome (`completed` / `stopped` / `aborted`), ms into the audio when it ended |
-| `items`      | question    | truth as a keymap label, onset ms, window-end ms (when the answer starts sounding), meta JSON (degree label, octave, register, MIDI note) |
+| `items`      | question    | truth as a keymap label, onset ms, window-end ms (when the answer starts sounding), meta JSON (degree label, MIDI note; before 2026-11-14 the octave and register too) |
 | `keystrokes` | key press   | ms since playback was started, key name (`4`, `space`, `other`...) |
 | `answers`    | question    | derived: answer, correct (NULL when nothing was pressed), latency from onset to the press that counted, presses in the window, late presses after it |
 

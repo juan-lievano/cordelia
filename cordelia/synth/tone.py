@@ -16,6 +16,12 @@ HARMONICS = ((1, 1.00), (2, 0.30), (3, 0.12), (4, 0.06))
 # faint" on closed headphones; the octave at 1.00 over a fundamental at 0.60 was too strong.)
 BASS_HARMONICS = ((1, 1.00), (2, 0.55), (3, 0.45), (4, 0.25), (6, 0.12), (8, 0.06))
 BASS_GAIN = 1.9
+# Under BASS_KNEE the bass voice falls off again, as (f / BASS_KNEE) ** BASS_TILT: 1.8 dB less at
+# E1, 0.8 at B1, nothing from E2 up. Since 2026-11-14: the lowest notes were a little much
+# on desk speakers (and shook the desk); at first a tilt of 0.5 (3 dB at E1), which left the
+# very lowest too soft.
+BASS_KNEE = 82.41            # E2
+BASS_TILT = 0.3
 TONE_DAMPING = 1000.0        # Hz: a partial here is at half strength
 TONE_TILT = 0.6              # level falls as (TONE_ANCHOR / f) ** TILT, ~3.6 dB an octave
 TONE_ANCHOR = 196.0          # G3: the lowest question note keeps full level
@@ -39,7 +45,7 @@ def segment(freq, n, level, bass=False):
         attack = max(1, int(SAMPLE_RATE * ATTACK))
         release = max(1, int(n * RELEASE_SHARE))
         parts = partials(freq, BASS_HARMONICS if bass else HARMONICS)
-        gain = level * min(1.0, (TONE_ANCHOR / freq) ** TONE_TILT) * (BASS_GAIN if bass else 1.0)
+        gain = level * min(1.0, (TONE_ANCHOR / freq) ** TONE_TILT) * (BASS_GAIN * min(1.0, (freq / BASS_KNEE) ** BASS_TILT) if bass else 1.0)
         seg = []
         for i in range(n):
             t = i / SAMPLE_RATE

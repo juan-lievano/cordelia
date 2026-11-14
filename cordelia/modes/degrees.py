@@ -7,7 +7,8 @@ beat of rest. With `--answer sung` the voice and the note again are one
 thing instead: the degree's solfege syllable sung on the question's pitch,
 and no rest after it. The right answer is always given, nothing is ever judged out
 loud, and the register varies so that the degree, not the pitch, is what
-is being asked.
+is being asked: every note of the list within the session's range around the
+tonic (`--range`) can come up.
 
 A session asks the list of degrees given on the command line, any subset
 of the twelve (`major`, `minor` and `all` stand for three of them); the
@@ -20,7 +21,7 @@ import math
 import random
 
 from ..score import Clip, Note, Score
-from ..voice import SYLLABLE, SungBank, VoiceBank, sung_label
+from ..voice import SYLLABLE, SungBank, VoiceBank, sampled, sung_label
 
 NAME = "degrees"
 
@@ -59,12 +60,24 @@ SHARED = 80
 THOMPSON = 20000
 FLOOR = 0.04
 BY = ("recall", "thompson")
-# Questions reach half an octave past the middle register either way: the
-# low octave asks the upper half of the scale, the high octave the lower half.
-OCTAVES = (-1, 0, 1)
-REGISTER = {-1: lambda semis: semis >= 7, 0: lambda semis: True, 1: lambda semis: semis <= 5}
+# --range: how far the session's notes go under and over the tonic, in semitones, and before
+# them the lowest the tonic may be: the tonic is that note or the first one over it, so the
+# range moves with the key and is the same degrees in every one. `--range E1 0 12` is the
+# tonic (E1 to Eb2) up to the tonic an octave over it; without the note the tonic is the
+# middle-register one, TONIC up. Every note of the range that is a degree of the list is
+# asked. These words stand for a range when typing, as `minor` does for a list, and are
+# expanded before anything is stored: the record only ever holds the note and the two
+# numbers. Since 2026-11-14. RANGE is what the degrees mode did before, with no setting for
+# it; the melody mode had --octaves and --register; those sessions have no `range`. (For a
+# few hours of that day a range was two fixed notes whatever the key, `["E1", "E2"]`.)
+TONIC = "G3"
+RANGES = {"low": ("E1", 0, 12), "middle": (TONIC, 0, 12), "high": ("G4", 0, 12), "wide": (TONIC, 5, 17)}
+RANGE = RANGES["wide"]         # degrees' when none was ever given: the fifth under the tonic to the fourth over its octave
+LOWEST, HIGHEST = 28, 96       # E1, C7: lower and the pitch is hard to hear, higher and the tone is thin
+BASS_UNDER = 48                # a range whose middle (over the keys) is under C3 is a bass line: the bass voice,
+                               # and the drone an octave up, out of its way
+# A note is louder an octave under the middle-register tonic and softer an octave over it.
 OCTAVE_LEVELS = {-1: 1.1, 0: 1.0, 1: 0.9}
-OCTAVE_NAMES = {-1: "low", 0: "mid", 1: "high"}
 
 NOTE_BEATS = 2
 PAUSE_BEATS = 2
@@ -74,9 +87,17 @@ INTRO_BEATS = 1                # the drone's fade-in, then the cadence, then the
 CADENCE = (("1", 0), ("5", 0), ("1", 1))   # (degree, octave): tonic, fifth, tonic an octave up
 CADENCE_BEATS = 1              # each cadence note
 CADENCE_REST_BEATS = 2         # after the last one, before the first question
+# When the list is the major or the minor scale, the session opens with the scale instead, as
+# a melody session does: 1 up to the tonic on top, a beat each, the last held, over the tonic
+# and fifth an octave down, so a new key is set in the ear before the first question (most
+# wanted in a short focus session). Since 2026-11-14; before, the cadence above for any list.
+SCALE_LAST_BEATS = 2
+SCALE_BASS = (("1", -1), ("5", -1))
+SCALE_BASS_LEVEL = 0.4         # each of the two, as under the melody mode's scale
 OUTRO_SECONDS = 2.0            # drone alone after the last answer, fading out
 RING = 0.25                    # a note rings this long past its beats
 
+# no `range` here: a session without one in the last config gets RANGE (see range_words)
 DEFAULTS = dict(minutes=4.0, key_pool=["all"], bpm=50.0, degrees=SHORTHANDS["major"], voice="default", answer="spoken")
 ANSWERS = ("spoken", "sung")   # the word then the note again, or the syllable sung on the note
 SINGER = "jennifer"            # the sung answer's voice, the melody mode's default singer
@@ -116,6 +137,81 @@ def tonic_midi(pc):
     where sung melodies sit (most questions then fall in G3-G5), and in the
     melody mode keeps every sung note within six semitones of a sample."""
     return 60 + pc if pc <= 6 else 48 + pc
+
+
+def parse_note(text):
+    """'E1', 'eb3', 'F#4' -> its MIDI note (C4 is 60), or None."""
+    name, octave = text.rstrip("0123456789"), text[len(text.rstrip("0123456789")):]
+    pc = parse_key(name) if name else None
+    return None if pc is None or not octave else 12 * (int(octave) + 1) + PITCH_CLASS[name[0].upper()] + (pc - PITCH_CLASS[name[0].upper()] + 6) % 12 - 6
+
+
+def note_name(midi):
+    return f"{NOTE_NAMES[midi % 12]}{midi // 12 - 1}"
+
+
+def parse_range(words):
+    """`--range` words (a shorthand; or the semitones under and over the tonic, with the
+    lowest note the tonic may be before them or TONIC) -> [note, under, over], or a SystemExit
+    saying why not."""
+    words = [str(w) for w in words]
+    said = " ".join(words)
+    if len(words) == 1 and words[0].lower() in RANGES:
+        return list(RANGES[words[0].lower()])
+    words = [TONIC, *words] if len(words) == 2 else words
+    if len(words) != 3 or parse_note(words[0]) is None or not all(w.isdigit() for w in words[1:]):
+        raise SystemExit(f"--range is {', '.join(RANGES)}, or the semitones under and over the tonic (5 17), "
+                         f"before them the lowest the tonic may be (E1 0 12; else {TONIC})")
+    floor, under, over = parse_note(words[0]), int(words[1]), int(words[2])
+    if floor - under < LOWEST or floor + 11 + over > HIGHEST:
+        raise SystemExit(f"--range {said}: in some key that goes under {note_name(LOWEST)} or over {note_name(HIGHEST)}")
+    return [note_name(floor), under, over]
+
+
+def range_words(a, last_config, default):
+    """The range a session starts from: --range, else the last session's, else `default`."""
+    return a.range or (last_config or {}).get("range") or default
+
+
+def range_name(config):
+    """The range as its shorthand when it has one, else `G3 -5 +17`; '' for a session from
+    before there were ranges."""
+    if not config.get("range"):
+        return ""
+    if len(config["range"]) == 2:       # the two fixed notes of a few hours of 2026-11-14
+        return "-".join(config["range"])
+    floor, under, over = config["range"]
+    return next((name for name, r in RANGES.items() if list(r) == list(config["range"])), f"{floor} -{under} +{over}")
+
+
+def span(config):
+    """The session's lowest and highest note: its tonic is the first at or over the range's
+    note, and the range so far under and over it."""
+    floor, under, over = config["range"]
+    tonic = parse_note(floor) + (parse_key(config["key"]) - parse_note(floor)) % 12
+    return tonic - under, tonic + over
+
+
+def span_text(config):
+    """`B1 to B2 (low)`, `D3 to C5 (G3 -5 +17)`: the session's notes, and the range they come from."""
+    low, high = span(config)
+    return f"{note_name(low)} to {note_name(high)} ({range_name(config)})"
+
+
+def bass(config):
+    """Whether the session is a bass line: the middle of its range, over the twelve keys, under BASS_UNDER."""
+    if "range" not in config:
+        return False
+    floor, under, over = config["range"]
+    return parse_note(floor) + 5.5 + (over - under) / 2 < BASS_UNDER
+
+
+def in_range(config):
+    """The session's notes, low to high, as (label, midi): every note of the range that is a
+    degree of the list in the key."""
+    pc, (low, high) = parse_key(config["key"]), span(config)
+    label = {(pc + s) % 12: d for d, s in SEMITONES.items()}
+    return [(label[m % 12], m) for m in range(low, high + 1) if label[m % 12] in config["degrees"]]
 
 
 def parse_key(text):
@@ -187,8 +283,11 @@ def short(degrees):
 
 
 def exercise(config, brief=False):
-    """What the session drilled, after the mode name in the stats: its degree list (`brief`: by its scale's name)."""
-    return ((short if brief else " ".join)(degrees_of(config)),)
+    """What the session drilled, after the mode name in the stats: its degree list (`brief`: by
+    its scale's name), and its range when that is not RANGE (which the sessions from before
+    there were ranges count as)."""
+    ranged = config.get("range") and list(config["range"]) != list(RANGE)
+    return ((short if brief else " ".join)(degrees_of(config)), *([range_name(config)] if ranged else []))
 
 
 def spoken(degrees):
@@ -204,7 +303,7 @@ def key_text(config):
 
 def settings(config):
     """The session's settings for its box, as (name, value) rows."""
-    return [("key", key_text(config)), ("degrees", " ".join(degrees_of(config))),
+    return [("key", key_text(config)), ("degrees", " ".join(degrees_of(config))), ("range", span_text(config)),
             *([("focus", focus_text(config["focus"]))] if config.get("focus") else []),
             ("bpm", f"{config['bpm']:g}"), ("answer", config.get("answer", "spoken")),
             ("voice", SINGER if config.get("answer") == "sung" else config.get("voice", "default"))]
@@ -214,8 +313,7 @@ def bank(config, data_dir):
     """The spoken bank, or the sung one, with every answer the session can give."""
     if config.get("answer") == "sung":
         b = SungBank(SINGER, data_dir)
-        b.ensure([sung_label(d, tonic_midi(parse_key(config["key"])) + SEMITONES[d] + 12 * o)
-                  for (d, o), _ in pool(degrees_of(config))])
+        b.ensure([sung_label(d, m) for d, m in in_range(config)])
         return b
     b = VoiceBank(config.get("voice", "default"), data_dir)
     b.ensure(spoken(degrees_of(config)))
@@ -231,8 +329,20 @@ def configure(a, last_config, rng):
     if a.answer not in ANSWERS:
         raise SystemExit(f"--answer is {' or '.join(ANSWERS)}")
     focus = focus_config(a.on, degrees, last_config, a.recent, a.by) if getattr(a, "focused", False) else None
-    return dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=a.bpm, degrees=list(degrees),
-                voice=a.voice, answer=a.answer, keys=1, focus=focus)
+    config = dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=a.bpm, degrees=list(degrees),
+                  range=parse_range(range_words(a, last_config, RANGE)), voice=a.voice, answer=a.answer, keys=1, focus=focus)
+    check_range(config, 1)
+    unsung = [note_name(m) for _, m in in_range(config) if not sampled(SINGER, m)]
+    if a.answer == "sung" and unsung:
+        raise SystemExit(f"--answer sung: {SINGER} does not sing {' '.join(unsung)}; another --range, or --answer spoken")
+    return config
+
+
+def check_range(config, least):
+    """A SystemExit when the range holds under `least` notes of the list in the session's key."""
+    if len(in_range(config)) < least:
+        raise SystemExit(f"--range {' '.join(map(str, config['range']))}: it holds {len(in_range(config))} of "
+                         f"{' '.join(config['degrees'])}, and a session needs {least}; a wider one")
 
 
 def hint(config, width):
@@ -258,7 +368,9 @@ class Builder:
         self.sung = config.get("answer") == "sung"
         self.beat = 60.0 / config["bpm"]
         self.tonic = tonic_midi(parse_key(config["key"]))
-        self.score = Score(drone={"midi": self.tonic - 24}, voice=bank.name)   # the root two octaves under the tonic
+        self.low = bass(config)
+        # the root two octaves under the middle-register tonic; one, over a bass line
+        self.score = Score(drone={"midi": self.tonic - (12 if self.low else 24)}, voice=bank.name)
 
     def midi(self, label, octave):
         return self.tonic + SEMITONES[label] + 12 * octave
@@ -266,11 +378,16 @@ class Builder:
     def answer_beats(self, clip):
         return max(1, math.ceil(self.bank.seconds(clip) / self.beat))
 
-    def phrase(self, t, label, octave):
+    def octave(self, midi):
+        """The octave a note is in, counted from the middle-register tonic's (0), and
+        no further than one either way."""
+        return max(-1, min(1, (midi - self.tonic) // 12))
+
+    def phrase(self, t, label, midi):
         """Question at t. Returns (window_end, next_t)."""
         beat = self.beat
-        midi, level = self.midi(label, octave), OCTAVE_LEVELS[octave]
-        self.score.notes.append(Note(t, NOTE_BEATS * beat + RING, midi, level))
+        level, voice = OCTAVE_LEVELS[self.octave(midi)], "bass" if self.low else "tone"
+        self.score.notes.append(Note(t, NOTE_BEATS * beat + RING, midi, level, voice=voice))
         voice_t = t + (NOTE_BEATS + PAUSE_BEATS) * beat
         if self.sung:
             clip = sung_label(label, midi)
@@ -279,12 +396,24 @@ class Builder:
         self.score.clips.append(Clip(voice_t, label))
         voice_beats = self.answer_beats(label)
         again = voice_t + voice_beats * beat
-        self.score.notes.append(Note(again, AGAIN_BEATS * beat + RING, midi, level))
+        self.score.notes.append(Note(again, AGAIN_BEATS * beat + RING, midi, level, voice=voice))
         return voice_t, again + (AGAIN_BEATS + REST_BEATS) * beat
 
     def cadence(self, t):
-        """Tonic, fifth, tonic an octave up, starting at t. Returns next_t."""
+        """Tonic, fifth, tonic an octave up, starting at t; or, when the list is the major or
+        the minor scale, that scale up to the octave over the tonic and fifth. Returns next_t."""
         beat = self.beat
+        scale = next((s for s in (SHORTHANDS["major"], SHORTHANDS["minor"]) if set(s) == set(degrees_of(self.config))), None)
+        if scale:
+            steps = [(d, 0) for d in scale] + [("1", 1)]
+            beats = len(steps) - 1 + SCALE_LAST_BEATS
+            for label, octave in SCALE_BASS:
+                self.score.notes.append(Note(t, beats * beat + RING, self.midi(label, octave), SCALE_BASS_LEVEL))
+            for i, (label, octave) in enumerate(steps):
+                held = SCALE_LAST_BEATS if i == len(steps) - 1 else 1
+                self.score.notes.append(Note(t, held * beat + RING, self.midi(label, octave)))
+                t += held * beat
+            return t + CADENCE_REST_BEATS * beat
         for label, octave in CADENCE:
             self.score.notes.append(Note(t, CADENCE_BEATS * beat + RING,
                                          self.midi(label, octave), OCTAVE_LEVELS[octave]))
@@ -293,20 +422,21 @@ class Builder:
 
     def max_phrase(self):
         if self.sung:
-            longest = max(self.answer_beats(sung_label(d, self.midi(d, o))) for (d, o), _ in pool(degrees_of(self.config)))
+            longest = max(self.answer_beats(sung_label(d, m)) for d, m in in_range(self.config))
             return (NOTE_BEATS + PAUSE_BEATS + longest) * self.beat
         longest = max(self.answer_beats(l) for l in degrees_of(self.config))
         return (NOTE_BEATS + PAUSE_BEATS + longest + AGAIN_BEATS + REST_BEATS) * self.beat
 
 
-def pool(degrees, shares=None):
-    """((label, octave), weight) for every question the list can ask; with `shares`
-    (degree -> its part of the questions) a degree's share split evenly over its octaves."""
-    qs = [(d, o) for o in OCTAVES for d in degrees if REGISTER[o](SEMITONES[d])]
+def pool(config, shares=None):
+    """((label, midi), weight) for every question the session can ask: the notes of its range;
+    with `shares` (degree -> its part of the questions) a degree's share split evenly over its
+    notes. (Before 2026-11-14 a question was (label, octave); see RANGES.)"""
+    qs = in_range(config)
     if shares is None:
         return [(q, WEIGHT.get(q[0], DEFAULT_WEIGHT)) for q in qs]
-    octaves = {d: sum(1 for q in qs if q[0] == d) for d in degrees}
-    return [(q, shares.get(q[0], 0) / octaves[q[0]]) for q in qs]
+    notes = {d: sum(1 for q in qs if q[0] == d) for d in config["degrees"]}
+    return [(q, shares.get(q[0], 0) / notes[q[0]]) for q in qs]
 
 
 def shares(weights):
@@ -386,10 +516,10 @@ def focus_text(focus, top=None):
     return " · ".join([focus["how"] + (" by " + focus["by"] if focus["how"] == "auto" and "by" in focus else ""), "  ".join(f"{d} {100 * s:.0f}%" for d, s in ranked)])
 
 
-def draw(rng, degrees, count, shares=None):
-    """(label, octave) pairs, never the exact same question twice in a row."""
-    questions = [q for q, _ in pool(degrees, shares)]
-    weights = [w for _, w in pool(degrees, shares)]
+def draw(rng, config, count, shares=None):
+    """(label, midi) pairs, never the exact same question twice in a row."""
+    questions = [q for q, _ in pool(config, shares)]
+    weights = [w for _, w in pool(config, shares)]
     out = []
     for _ in range(count):
         q = rng.choices(questions, weights)[0]
@@ -407,11 +537,9 @@ def build_session(config, bank, rng=None):
     t = b.cadence(INTRO_BEATS * b.beat)
     count = max(1, int((limit - t) // b.max_phrase()))
     items = []
-    for idx, (label, octave) in enumerate(draw(rng, config["degrees"], count, (config.get("focus") or {}).get("shares"))):
-        window_end, nxt = b.phrase(t, label, octave)
-        items.append(dict(idx=idx, truth=label, ask_s=t, window_end_s=window_end,
-                          meta=dict(degree=label, octave=octave, register=OCTAVE_NAMES[octave],
-                                    midi=b.midi(label, octave))))
+    for idx, (label, midi) in enumerate(draw(rng, config, count, (config.get("focus") or {}).get("shares"))):
+        window_end, nxt = b.phrase(t, label, midi)
+        items.append(dict(idx=idx, truth=label, ask_s=t, window_end_s=window_end, meta=dict(degree=label, midi=midi)))
         t = nxt
     b.score.seconds = t + OUTRO_SECONDS
     return b.score, items, keymap()

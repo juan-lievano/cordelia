@@ -35,6 +35,18 @@ PARTIALS = (
 )
 
 
+# Above this the partials are turned down 12 dB an octave, so the top of the drone sits at the
+# same place whatever the root. Since 2026-11-14: with the root an octave up (melody's low
+# register, B3 for B) the shimmer was at 3 and 4 kHz, where the ear is keenest, and stood out as
+# a whistle of its own on small speakers. Under the knee (every partial for a root up to C2,
+# all but the shimmer for the middle register's other keys) nothing changes.
+ROLLOFF_HZ = 1050.0
+
+
+def rolloff(freq):
+    return min(1.0, (ROLLOFF_HZ / freq) ** 2)
+
+
 class Drone:
     """One period of each partial, tabulated once, and an LFO per partial."""
 
@@ -42,8 +54,9 @@ class Drone:
         self.period = max(2, round(SAMPLE_RATE / midi_to_freq(midi)))
         p = self.period
         self.tables = [[math.sin(2 * math.pi * h * i / p) for i in range(p)] for h, *_ in PARTIALS]
-        self.lfos = [(level, floor, rng.uniform(slow, quick), rng.uniform(0, 2 * math.pi))
-                     for _, level, floor, slow, quick in PARTIALS]
+        root = SAMPLE_RATE / p
+        self.lfos = [(level * rolloff(h * root), floor, rng.uniform(slow, quick), rng.uniform(0, 2 * math.pi))
+                     for h, level, floor, slow, quick in PARTIALS]
         self.scale = DRONE_LEVEL / sum(level for _, level, *_ in PARTIALS)
 
     def amps(self, seconds):

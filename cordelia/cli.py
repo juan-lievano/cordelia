@@ -47,13 +47,10 @@ def main(argv=None):
 
     m = sub.add_parser("melody", help="short melodies over a drone, sung back after each")
     m.add_argument("degrees", nargs="*", metavar="DEGREE",
-                   help=f"the degrees a melody may use, from {' '.join(melody.DEGREES)} (8: the tonic on top); "
+                   help=f"the degrees a melody may use, from {' '.join(degrees.SEMITONES)}; "
                         + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
-    m.add_argument("--octaves", type=int, help="1, 2 or 3: the list that many times over, up from the tonic that keeps them "
-                                               "nearest the middle of the piano")
-    m.add_argument("--register", help=" | ".join(melody.REGISTERS) + ": where the octaves sit; low is a bass line (one octave: "
-                                      "the tonic E1 to Eb2), high an octave over middle. A melody with a note no singer "
-                                      "recorded is spoken, not sung")
+    range_flag(m, "a melody is drawn from every note of the list within it. A melody with a note no singer "
+                  "recorded is spoken, not sung, as is every melody of a range whose middle is under C3 (a bass line)")
     m.add_argument("--length", type=int, help="notes in a melody")
     m.add_argument("--spread", type=float,
                    help="how far a move tends to go: a move of d positions along the notes weighs spread^(d-1), "
@@ -136,10 +133,18 @@ def commit():
         return None
 
 
+def range_flag(p, what):
+    p.add_argument("--range", nargs="+", metavar="N",
+                   help="how many semitones under and over the tonic the notes go (0 12: the tonic up to its octave), and "
+                        f"before them the lowest the tonic may be (E1 0 12: the tonic E1 to Eb2; else {degrees.TONIC}): " + what + "; "
+                        + ", ".join(f"{w} = {' '.join(map(str, r))}" for w, r in degrees.RANGES.items()))
+
+
 def degree_flags(p):
     p.add_argument("degrees", nargs="*", metavar="DEGREE",
                    help=f"the degrees to ask, from {' '.join(degrees.SEMITONES)}; "
                         + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
+    range_flag(p, "every note of the list within it is asked (before the first, " + " ".join(map(str, degrees.RANGE)) + ")")
     p.add_argument("--minutes", type=float)
     p.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     p.add_argument("--bpm", type=float)
