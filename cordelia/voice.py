@@ -91,6 +91,12 @@ GATE = 0.01                  # of the peak: the leading silence is cut here
 VOWEL = 0.5                  # of the peak: where the vowel is taken to land
 
 
+def shift(singer, syllable, midi):
+    """Semitones from `midi` to the singer's nearest sample of `syllable` (one per octave)."""
+    spec = SINGERS[singer]
+    return min(abs(m - midi) for m in range(spec["low"], spec["high"] + 1) if SOTORRIO[m % 12] == syllable)
+
+
 def sung_label(label, midi):
     """The clip label for scale-degree label `label` sung on `midi`."""
     return f"{SYLLABLE[label]}@{midi}"
@@ -159,3 +165,31 @@ class SungBank(VoiceBank):
             w.setsampwidth(2)
             w.setframerate(SAMPLE_RATE)
             w.writeframes(pcm.tobytes())
+
+
+class Choir:
+    """Every singer's bank as one: a label is `<singer>/<syllable>@<midi>`, so a session can
+    have each melody sung by whoever has samples near it."""
+
+    name = "sung"
+
+    def __init__(self, data_dir):
+        self.banks = {singer: SungBank(singer, data_dir) for singer in SINGERS}
+
+    def _of(self, label):
+        singer, clip = label.split("/")
+        return self.banks[singer], clip
+
+    def ensure(self, labels):
+        for label in labels:
+            bank, clip = self._of(label)
+            bank.ensure([clip])
+
+    def load(self, label):
+        bank, clip = self._of(label)
+        return bank.load(clip)
+
+    def lead(self, label):
+        bank, clip = self._of(label)
+        return bank.lead(clip)
+

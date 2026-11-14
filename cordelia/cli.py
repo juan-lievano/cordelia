@@ -47,17 +47,19 @@ def main(argv=None):
 
     m = sub.add_parser("melody", help="short melodies over a drone, sung back after each")
     m.add_argument("degrees", nargs="*", metavar="DEGREE",
-                   help=f"the degrees a melody may use, from {' '.join(melody.DEGREES)}; "
+                   help=f"the degrees a melody may use, from {' '.join(melody.DEGREES)} (8: the tonic on top); "
                         + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
+    m.add_argument("--octaves", type=int, help="1, 2 or 3: the list that many times over, up from the tonic that keeps them "
+                                               "nearest the middle of the piano")
     m.add_argument("--length", type=int, help="notes in a melody")
     m.add_argument("--spread", type=float,
-                   help="how far a move tends to go: a move of d positions along the list weighs spread^(d-1), "
-                        "so 0 is steps only, 1 any other degree equally, 0.2 mostly steps with the odd third")
+                   help="how far a move tends to go: a move of d positions along the notes weighs spread^(d-1), "
+                        "so 0 is steps only, 1 any other note equally, 0.2 mostly steps with the odd third")
     m.add_argument("--hearings", type=int, help="times a melody is played before the answer")
     m.add_argument("--minutes", type=float)
     m.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     m.add_argument("--bpm", type=float)
-    m.add_argument("--singer", help=" | ".join(SINGERS))
+    m.add_argument("--singer", help=" | ".join(SINGERS) + ": who sings whatever they have samples near; the other sings the rest")
     session_flags(m)
 
     c = sub.add_parser("chords", help="chord qualities, the answer spoken then arpeggiated after each")

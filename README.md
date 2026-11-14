@@ -28,6 +28,7 @@ python3 -m cordelia degrees --midi t.mid           # also write the score as MID
 python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
 python3 -m cordelia melody                         # the last melody session's settings (at first: 5 min, four notes on 1 to 5, mostly stepwise, 55 BPM), sung back
 python3 -m cordelia melody 1 2 b3 4 5 --length 3 --spread 0.5 --key G --singer chengu
+python3 -m cordelia melody minor --octaves 2       # the list twice over, up from the tonic (1, 2 or 3 octaves)
 python3 -m cordelia chords                         # the last chords session's settings (at first: 4 min, 50 BPM, level 1)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
 python3 -m cordelia review                         # listen to b3 4 b7 in a fresh key: cadence, scales, the tonic, pairs, triples, named, on a staff as it plays; nothing recorded
@@ -145,19 +146,28 @@ solfege samples in `solfege_samples/` (fixed-do, one syllable per
 semitone): each note is the singer's nearest sample of that syllable,
 pitched to the note by TD-PSOLA (`cordelia/psola.py`), which moves the
 pitch and leaves the singer's speed and vowel alone, so any key sounds
-like her. The shift is the key's distance from C, six semitones at most,
-and the melody sits in the octave nearest middle C whatever the key.
+like her, a sample pitched six semitones at most.
 `--singer`
-picks `jennifer` (default) or `chengu`; the sung clips are made once per
+picks `jennifer` (default) or `chengu`, who sings every melody they have
+samples near; a melody out of their reach is sung by the other (jennifer's
+samples are C3 to B5, chengu's C2 to B4). The sung clips are made once per
 note under `data/voices/sung-<singer>/`.
 
 The recipe is given on the command line, as in the degrees mode: the
-degrees a melody may use (any of the twelve, `8` for the tonic above, and
-the same shorthands), `--length` for how many notes, `--spread` for how far
-a move tends to go (to any other degree in the list, one d positions away
-weighing spread^(d-1): 0 is steps only, 1 any other degree equally; the
-first note is uniform), and `--hearings` for
-how many times a melody is played before the answer. The four together are the exercise the stats group
+degrees a melody may use (any of the twelve, `8` for the tonic on top, and
+the same shorthands),
+`--octaves` for how many octaves of them (1, 2 or 3), `--length` for how
+many notes, `--spread` for how far a move tends to go (to any other note,
+one d positions away weighing spread^(d-1): 0 is steps only, 1 any other
+note equally; the first note is uniform), and `--hearings` for
+how many times a melody is played before the answer. The octaves run up
+from the tonic, the one that puts their middle nearest G4: G3 to F#4 for
+one octave, as before there were octaves, C#3 to C4 for two, G2 to F#3 for
+three, and an octave off that where a note would otherwise be more than six
+semitones from every sample (the highest do there is to sing is F#5, so
+three octaves with an 8 sit an octave lower: G1 to F#2 up to G4 to F#5). An
+answer is the degrees in any octave, and the melody is shown that way once
+sung (`1 7 5 6 1 6`, the 8 as 1). The five together are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
 typed, and so is `--length 5` or `--hearings 2` on a list already played. The two numbered
 levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the

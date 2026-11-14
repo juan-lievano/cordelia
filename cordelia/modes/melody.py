@@ -9,30 +9,40 @@ last starts the answer over, backspace clears it, and what stands when the
 singing starts is the answer.
 
 The exercise is described on the command line, as in the degrees mode:
-which degrees a melody may use (any of the twelve, and 8 for the tonic
-above), how many notes, how far a move tends to go, and how many times a
-melody is played. There is no level table; the four together are the
-exercise, and every answer is stored the same way (the degrees as a
+which degrees a melody may use (any of the twelve, and 8 for the tonic on
+top), over how many octaves,
+how many notes, how far a move tends to go, and how many times a melody is
+played. There is no level table; the five together are the exercise, and every answer is stored the same way (the degrees as a
 space-separated string), so the stats read across them.
 """
 
 import random
 
 from ..score import Clip, Note, Score
-from ..voice import SYLLABLE, SungBank, sung_label
+from ..voice import MAX_SHIFT, SINGERS, SYLLABLE, Choir, shift, sung_label
 from .degrees import FLAT_ROW, HOME_ROW, SEMITONES, draw_key, key_pool, key_text, parse_degrees, parse_key, short, tonic_midi
 
 NAME = "melody"
 
-# The twelve degrees and the tonic above, with their semitones above the tonic.
+# The twelve degrees and the tonic on top, with their semitones above the tonic.
 DEGREES = dict(SEMITONES, **{"8": 12})
+LABEL = {semitones: d for d, semitones in SEMITONES.items()}
 
-# degrees: what a melody may use; length: how many notes; spread: how far a
-# move tends to go, the weight of a move of d positions along the list being
-# spread ** (d - 1), so 0 is steps only and 1 is uniform over the other
-# degrees (never the same degree twice running; the first note is uniform);
+# The notes a melody is drawn from: the list up from a tonic, `octaves` times over, and with
+# 8 in the list the tonic on top of the last. The tonic is the one that puts the middle of
+# those octaves nearest G4: for one octave the middle-register tonic (G3 to F#4), for two
+# C#3 to C4, for three G2 to F#3; an octave off that where some note would otherwise be
+# further than a sample can be pitched from every singer's (the highest do sung is F#5).
+CENTRE = 67
+OCTAVES = (1, 2, 3)
+
+# degrees: what a melody may use; octaves: over how many; length: how many notes;
+# spread: how far a move tends to go, the weight of a move of d positions along the
+# notes (the list, octave after octave) being spread ** (d - 1), so 0 is steps only
+# and 1 is uniform over the other notes (never the same note twice running; the
+# first note is uniform);
 # hearings: how many times a melody is played before the answer.
-DEFAULTS = dict(minutes=5.0, key_pool=["all"], bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, spread=0.2,
+DEFAULTS = dict(minutes=5.0, key_pool=["all"], bpm=55.0, degrees=("1", "2", "3", "4", "5"), octaves=1, length=4, spread=0.2,
                 hearings=3, singer="jennifer")
 
 # A question, in beats: the melody, then two clicks and the melody again
@@ -78,6 +88,49 @@ def keymap():
     return km
 
 
+def notes(config):
+    """The MIDI notes a melody is drawn from, low to high. Sessions before 2026-11-13 had
+    no `octaves`, and were one."""
+    pc, octaves = parse_key(config["key"]), config.get("octaves", 1)
+    target = CENTRE - 6 * octaves
+    tonic = target + (pc - target + 6) % 12 - 6
+    steps = sorted({SEMITONES[d] for d in config["degrees"] if d != "8"})
+    placed = [[low + 12 * o + s for o in range(octaves) for s in steps] + [low + 12 * octaves] * ("8" in config["degrees"])
+              for low in (tonic, tonic - 12, tonic + 12, tonic - 24, tonic + 24)]
+    # the fewest notes no singer has a sample near, the nearest to the centre first
+    return min(placed, key=lambda among: sum(not near(config, m) for m in among))
+
+
+def near(config, midi):
+    """The singers with a sample of the note's syllable near enough to pitch to it."""
+    return [s for s in SINGERS if shift(s, SYLLABLE[label(config, midi)], midi) <= MAX_SHIFT]
+
+
+def singers(config, midis):
+    """Who sings each note of a melody: the session's singer if she has all of it, else the
+    other if they have, else each note by whoever has it (the session's singer first)."""
+    order = sorted(SINGERS, key=lambda s: s != config.get("singer"))
+    whole = [s for s in order if all(s in near(config, m) for m in midis)]
+    if whole:
+        return [whole[0]] * len(midis)
+    out = []
+    for m in midis:
+        able = [s for s in order if s in near(config, m)]
+        if not able:
+            raise SystemExit(f"no singer has a {SYLLABLE[label(config, m)]!r} near MIDI {m}")
+        out.append(able[0])
+    return out
+
+
+def label(config, midi):
+    """The degree a note is in the session's key, in any octave."""
+    return LABEL[(midi - parse_key(config["key"])) % 12]
+
+
+def span(config):
+    return f"{config['octaves']} octave{'s' * (config['octaves'] > 1)}"
+
+
 def recipe(config, brief=False):
     """The exercise as words: the list (`brief`: by its scale's name), then the rest. Sessions before
     2026-11-08 had `step`, the share of moves to a neighbour, the rest uniform
@@ -86,7 +139,8 @@ def recipe(config, brief=False):
         moves = f"spread {config['spread']:g}"
     else:
         moves = "any move" if config["step"] is None else f"step {config['step']:g}"
-    return ((short if brief else " ".join)(config["degrees"]), f"{config['length']} notes, {moves}, heard {config['hearings']}x")
+    return ((short if brief else " ".join)(config["degrees"]),
+            ", ".join([*([span(config)] if config.get("octaves", 1) > 1 else []), f"{config['length']} notes", moves, f"heard {config['hearings']}x"]))
 
 
 def exercise(config, brief=False):
@@ -99,6 +153,7 @@ def settings(config):
     moves = (("spread", f"{config['spread']:g}") if "spread" in config else
              ("step", "any move" if config["step"] is None else f"{config['step']:g}"))
     return [("key", key_text(config)), ("degrees", " ".join(config["degrees"])),
+            ("octaves", f"{config.get('octaves', 1)}"),
             ("length", f"{config['length']} notes"), moves, ("hearings", f"{config['hearings']}"),
             ("bpm", f"{config['bpm']:g}"), ("singer", config.get("singer", "jennifer"))]
 
@@ -114,13 +169,13 @@ class Builder:
     def midi(self, degree, octave=0):
         return tonic_midi(self.pc) + DEGREES[degree] + 12 * octave
 
-    def sung(self, degree):
-        return sung_label(degree, self.midi(degree))
+    def sung(self, midi, singer):
+        return f"{singer}/{sung_label(label(self.config, midi), midi)}"
 
-    def melody(self, t, degrees):
+    def melody(self, t, midis):
         """The notes a beat each from t. Returns next_t."""
-        for d in degrees:
-            self.score.notes.append(Note(t, self.beat + RING, self.midi(d)))
+        for m in midis:
+            self.score.notes.append(Note(t, self.beat + RING, m))
             t += self.beat
         return t
 
@@ -130,32 +185,32 @@ class Builder:
             t += self.beat
         return t
 
-    def sing(self, t, degrees):
+    def sing(self, t, midis):
         """The answer, a note a beat on its own pitch; each sung note's vowel
         lands on the beat and holds a little under the next. Returns next_t."""
-        for i, d in enumerate(degrees):
-            label = self.sung(d)
-            lead = self.bank.lead(label)
-            last = i == len(degrees) - 1
+        for i, (m, singer) in enumerate(zip(midis, singers(self.config, midis))):
+            clip = self.sung(m, singer)
+            lead = self.bank.lead(clip)
+            last = i == len(midis) - 1
             dur = lead + (SUNG_RING if last else self.beat + SUNG_OVERLAP)
-            self.score.clips.append(Clip(t - lead, label, SUNG_LEVEL, dur))
+            self.score.clips.append(Clip(t - lead, clip, SUNG_LEVEL, dur))
             t += self.beat
         return t
 
-    def phrase(self, t, degrees):
+    def phrase(self, t, midis):
         """Question at t. Returns (window_end, next_t)."""
         for i in range(self.config["hearings"]):
             if i:
                 t = self.clicks(t)
-            t = self.melody(t, degrees)
+            t = self.melody(t, midis)
         t = self.clicks(t, ANSWER_CLICK_BEATS)
         window_end = t
-        t = self.sing(t, degrees)
+        t = self.sing(t, midis)
         return window_end, t + REST_BEATS * self.beat
 
     def cadence(self, t):
-        """1, the asked degrees and 8 up the octave, a beat each, the last held,
-        over the tonic and fifth, starting at t. Returns next_t."""
+        """1, the asked degrees and 8 up the octave from the middle-register tonic, a beat
+        each, the last held, over the tonic and fifth, starting at t. Returns next_t."""
         steps = list(dict.fromkeys(["1", *self.config["degrees"], "8"]))
         beats = len(steps) - 1 + CADENCE_LAST_BEATS
         for degree, octave in CADENCE_BASS:
@@ -171,21 +226,20 @@ class Builder:
         return hearings * notes + (hearings - 1) * CLICK_BEATS + ANSWER_CLICK_BEATS + notes + REST_BEATS
 
 
-def next_note(rng, config, last):
-    """Any other degree in the list, weighted spread ** (positions away - 1)."""
-    degrees = config["degrees"]
-    i = degrees.index(last)
-    others = [(d, abs(j - i)) for j, d in enumerate(degrees) if j != i]
-    return rng.choices([d for d, _ in others], [config["spread"] ** (away - 1) for _, away in others])[0]
+def next_note(rng, config, among, last):
+    """Any other note, weighted spread ** (positions away - 1)."""
+    i = among.index(last)
+    others = [(m, abs(j - i)) for j, m in enumerate(among) if j != i]
+    return rng.choices([m for m, _ in others], [config["spread"] ** (away - 1) for _, away in others])[0]
 
 
 def draw(rng, config, count):
-    """`count` melodies for the config, never the same one twice in a row."""
-    out, previous = [], None
+    """`count` melodies for the config as MIDI notes, never the same one twice in a row."""
+    out, previous, among = [], None, notes(config)
     while len(out) < count:
-        melody = [rng.choice(config["degrees"])]
+        melody = [rng.choice(among)]
         while len(melody) < config["length"]:
-            melody.append(next_note(rng, config, melody[-1]))
+            melody.append(next_note(rng, config, among, melody[-1]))
         if melody != previous:
             out.append(melody)
             previous = melody
@@ -195,7 +249,7 @@ def draw(rng, config, count):
 def sung_labels(config):
     """Every sung clip a session at this config could need."""
     b = Builder(config, _NoBank())
-    return [b.sung(d) for d in config["degrees"]]
+    return [b.sung(m, s) for m in notes(config) for s in near(config, m)]
 
 
 class _NoBank:
@@ -203,8 +257,8 @@ class _NoBank:
 
 
 def bank(config, data_dir):
-    """The singer's bank, with every clip the session can ask for."""
-    b = SungBank(config["singer"], data_dir)
+    """The singers' banks, with every clip the session can ask for."""
+    b = Choir(data_dir)
     b.ensure(sung_labels(config))
     return b
 
@@ -215,6 +269,8 @@ def configure(a, last_config, rng):
     degrees, length, spread, hearings, bpm = parse_degrees(a.degrees, DEGREES), a.length, a.spread, a.hearings, a.bpm
     if len(degrees) < 2:
         raise SystemExit("a melody needs at least two degrees to move between")
+    if a.octaves not in OCTAVES:
+        raise SystemExit(f"--octaves is {', '.join(map(str, OCTAVES[:-1]))} or {OCTAVES[-1]}")
     if length < 1:
         raise SystemExit("--length must be at least 1")
     if hearings < 1:
@@ -223,8 +279,11 @@ def configure(a, last_config, rng):
         raise SystemExit("--spread is 0 (steps only) to 1 (any other degree, equally)")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
-    return dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=bpm, degrees=list(degrees), length=length, spread=spread,
-                hearings=hearings, singer=a.singer, keys=length)
+    config = dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=bpm, degrees=list(degrees), octaves=a.octaves,
+                  length=length, spread=spread, hearings=hearings, singer=a.singer, keys=length)
+    if a.singer not in SINGERS:
+        raise SystemExit(f"singer {a.singer!r}: choose from {', '.join(SINGERS)}")
+    return config
 
 
 def hint(config, width):
@@ -252,10 +311,11 @@ def build_session(config, bank, rng=None):
     t = b.cadence(INTRO_BEATS * b.beat)
     count = max(1, int((limit - t) // (b.phrase_beats(config["length"]) * b.beat)))
     items = []
-    for idx, degrees in enumerate(draw(rng, config, count)):
-        window_end, nxt = b.phrase(t, degrees)
+    for idx, midis in enumerate(draw(rng, config, count)):
+        window_end, nxt = b.phrase(t, midis)
+        degrees = [label(config, m) for m in midis]
         items.append(dict(idx=idx, truth=" ".join(degrees), ask_s=t, window_end_s=window_end,
-                          meta=dict(degrees=degrees, midis=[b.midi(d) for d in degrees])))
+                          meta=dict(degrees=degrees, midis=midis)))
         t = nxt
     b.score.seconds = t + OUTRO_SECONDS
     return b.score, items, keymap()

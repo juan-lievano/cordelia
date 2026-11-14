@@ -29,14 +29,15 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Melody**     | `cordelia melody`                      | last session's settings, key drawn from the list |
 |                | `cordelia melody 1 2 b3 4 5`           | degrees allowed (`8`, shorthands too)           |
+|                | &nbsp;&nbsp;`--octaves 2`              | 1-3, up from the tonic (last; 1)                |
 |                | &nbsp;&nbsp;`--length 3`               | notes (last; 4)                                 |
 |                | &nbsp;&nbsp;`--spread 0.5`             | 0 steps only, 1 anywhere (last; 0.2)            |
 |                | &nbsp;&nbsp;`--hearings 2`             | plays before the answer (last; 3)               |
 |                | &nbsp;&nbsp;`--bpm 60`                 | tempo (last; 55)                                |
 |                | &nbsp;&nbsp;`--minutes 5`              | length (last; 5)                                |
 |                | &nbsp;&nbsp;`--key G`                  | keys to draw from, not the last (last; all)     |
-|                | &nbsp;&nbsp;`--singer chengu`          | or `jennifer` (last; jennifer)                  |
-|                | &nbsp;exercise | list + length + spread + hearings               |
+|                | &nbsp;&nbsp;`--singer chengu`          | or `jennifer`; the other sings what's out of reach |
+|                | &nbsp;exercise | list + octaves + length + spread + hearings     |
 |                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
 |                | &nbsp;flat | shifted: `H < > N E I L Y` (`>` = b3)           |
 |                | &nbsp;counts | what stands when the singing starts             |
