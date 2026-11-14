@@ -96,7 +96,11 @@ def main(argv=None):
     sub.add_parser("data", help="where the database lives")
 
     if not (sys.argv[1:] if argv is None else argv):
-        return p.print_help()
+        # bare: the drill played last, at its settings (the help, before there is one). Since 2026-11-14; the help before.
+        last = store.connect().execute("SELECT mode FROM sessions WHERE outcome IN ('completed', 'stopped') ORDER BY id DESC LIMIT 1").fetchone()
+        if not last:
+            return p.print_help()
+        argv = [last[0]]
     a, extra = p.parse_known_args(argv)
     if extra:       # argparse would blame the top-level usage; the subcommand's is the useful one
         sub.choices[a.cmd].error(f"unrecognized arguments: {' '.join(extra)}  (--help lists the flags)")

@@ -3,6 +3,8 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 
 |                | Command                                | Does                                            |
 |----------------|----------------------------------------|-------------------------------------------------|
+| **Again**      | `cordelia`                             | the drill played last, at its settings          |
+|   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Degrees**    | `cordelia degrees`                     | last session's settings, key drawn from the list |
 |                | `cordelia degrees 1 2 5 6`             | any list = an exercise                          |
 |                | `major` `minor` `all`                  | 1-7 / 1 2 b3 4 5 b6 b7 / the twelve             |

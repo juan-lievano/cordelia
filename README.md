@@ -14,6 +14,7 @@ That matters more than keeping this README current; the README explains how
 things work and can lag, the cheat sheet is what gets read before typing.
 
 ```sh
+cordelia                                           # the drill played last, at its settings
 cordelia degrees                                   # every setting the last degrees session's (at first: 4 min, 50 BPM, major, any key)
 cordelia degrees minor --minutes 5
 python3 -m cordelia degrees                        # the same, from the repo
