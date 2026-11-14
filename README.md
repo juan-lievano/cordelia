@@ -167,7 +167,9 @@ three, and an octave off that where a note would otherwise be more than six
 semitones from every sample (the highest do there is to sing is F#5, so
 three octaves with an 8 sit an octave lower: G1 to F#2 up to G4 to F#5). An
 answer is the degrees in any octave, and the melody is shown that way once
-sung (`1 7 5 6 1 6`, the 8 as 1). The five together are the exercise the stats group
+sung (`1 7 5 6 1 6`, the 8 as 1), with `--shape slabs` or `--shape braille` a mark under
+each note as high as the note is above the melody's lowest (a level per scale step, 8 or 4 to
+a row; `none` turns it off). The five together are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
 typed, and so is `--length 5` or `--hearings 2` on a list already played. The two numbered
 levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the

@@ -244,11 +244,11 @@ def hint(config, width):
     return keys + "\nflats sung: " + flats
 
 
-def status(current, n, typed, config, answer=None):
+def status(current, n, typed, config, item=None):
     """The question, the key typed, and two lines under it the right answer once it has been said,
     under the typed one."""
     head = f"{current} / {n}   "
-    return f"{head}[{typed[-1] if typed else ' '}]\n\n" + (" " * (len(head) + 1) + answer if answer else "")
+    return f"{head}[{typed[-1] if typed else ' '}]\n\n" + (" " * (len(head) + 1) + item["truth"] if item else "")
 
 
 class Builder:

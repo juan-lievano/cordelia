@@ -125,7 +125,7 @@ def hint(config, width):
     return "\n".join("".join(e.ljust(cell) for e in row).rstrip() for row in rows)
 
 
-def status(current, n, typed, config, answer=None):
+def status(current, n, typed, config, item=None):
     answer = f"{QUALITIES[typed[-1]][2]} ({typed[-1]})" if typed else " "
     return f"{current} / {n}   [{answer}]"
 

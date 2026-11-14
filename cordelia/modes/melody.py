@@ -16,11 +16,13 @@ played. There is no level table; the five together are the exercise, and every a
 space-separated string), so the stats read across them.
 """
 
+import functools
 import random
 
 from ..score import Clip, Note, Score
+from ..staff import spell
 from ..voice import MAX_SHIFT, SINGERS, SYLLABLE, Choir, shift, sung_label
-from .degrees import FLAT_ROW, HOME_ROW, SEMITONES, draw_key, key_pool, key_text, parse_degrees, parse_key, short, tonic_midi
+from .degrees import FLAT_ROW, HOME_ROW, NOTE_NAMES, SEMITONES, draw_key, key_pool, key_text, parse_degrees, parse_key, short, tonic_midi
 
 NAME = "melody"
 
@@ -43,7 +45,13 @@ OCTAVES = (1, 2, 3)
 # first note is uniform);
 # hearings: how many times a melody is played before the answer.
 DEFAULTS = dict(minutes=5.0, key_pool=["all"], bpm=55.0, degrees=("1", "2", "3", "4", "5"), octaves=1, length=4, spread=0.2,
-                hearings=3, singer="jennifer")
+                hearings=3, singer="jennifer", shape="none")
+
+# --shape: under the sung melody, a mark under each note as high as the note is above the
+# melody's lowest, a level per scale step; the levels a character has, low to high. A row of
+# them is added for every that many steps the session's notes span. The slabs' middle six
+# are Unicode 13 (U+1FB76 on), which not every terminal draws.
+SHAPES = dict(none="", slabs="▁🭻🭺🭹🭸🭷🭶▔", braille="⣀⠤⠒⠉")
 
 # A question, in beats: the melody, then two clicks and the melody again
 # for each further hearing, a bar of clicks to think, the answer sung a
@@ -279,8 +287,10 @@ def configure(a, last_config, rng):
         raise SystemExit("--spread is 0 (steps only) to 1 (any other degree, equally)")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
+    if a.shape not in SHAPES:
+        raise SystemExit(f"--shape is {', '.join(SHAPES)}")
     config = dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=bpm, degrees=list(degrees), octaves=a.octaves,
-                  length=length, spread=spread, hearings=hearings, singer=a.singer, keys=length)
+                  length=length, spread=spread, hearings=hearings, singer=a.singer, shape=a.shape, keys=length)
     if a.singer not in SINGERS:
         raise SystemExit(f"singer {a.singer!r}: choose from {', '.join(SINGERS)}")
     return config
@@ -293,14 +303,48 @@ def hint(config, width):
             + (f"\nflats sung: {flats}" if flats else ""))
 
 
-def status(current, n, typed, config, answer=None):
+def step(config, midi):
+    """The note's height in scale steps, spelt from its degree (b3 is on the third's line)."""
+    return spell(NOTE_NAMES[parse_key(config["key"])], label(config, midi), midi)[0]
+
+
+@functools.lru_cache
+def reach(key, degrees, octaves):
+    """How many scale steps the session's notes span, both ends counted."""
+    config = dict(key=key, degrees=degrees, octaves=octaves)
+    steps = [step(config, m) for m in notes(config)]
+    return max(steps) - min(steps) + 1
+
+
+def shape(config, midis, width):
+    """The --shape rows, top first: under each note (`width` columns, one between) its mark, in
+    as few rows as the melody takes, right under it; then blank rows, as many as the widest
+    melody of the session would need, so the panel is as tall for every question (and all of
+    them blank without `midis`, before the answer)."""
+    levels = SHAPES[config.get("shape", "none")]
+    if not levels:
+        return []
+    rows = -(-reach(config["key"], tuple(config["degrees"]), config.get("octaves", 1)) // len(levels))
+    steps = [step(config, m) for m in midis or []]
+    high = [s - min(steps) for s in steps]
+    used = max(high, default=-1) // len(levels) + 1
+    return [" ".join((levels[h % len(levels)] if h // len(levels) == r else " ") * width for h in high)
+            for r in range(used - 1, -1, -1)] + [""] * (rows - used)
+
+
+def status(current, n, typed, config, item=None):
     """The question, the degrees typed, and two lines under them the melody once its singing
-    has started, as in degrees: the syllables are not always clear."""
+    has started, as in degrees: the syllables are not always clear. Every degree as wide as
+    the list's widest, so the notes are evenly spaced; under them the --shape rows."""
+    width = max(map(len, config["degrees"]))
     slots = ["_"] * config["keys"]
     for i, k in enumerate(typed):
         slots[i] = k
     head = f"{current} / {n}   "
-    return f"{head}[{' '.join(slots)}]" + ("\n\n" + " " * (len(head) + 1) + answer if answer else "")
+    under = lambda text: " " * (len(head) + 1) + text      # noqa: E731
+    row = lambda labels: " ".join(l.rjust(width) for l in labels)      # noqa: E731
+    return "\n".join([f"{head}[{row(slots)}]", "", under(row(item["truth"].split())) if item else "",
+                      *map(under, shape(config, item and item["meta"].get("midis"), width))]).rstrip("\n")
 
 
 def build_session(config, bank, rng=None):

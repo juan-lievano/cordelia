@@ -181,8 +181,10 @@ class Choir:
         return self.banks[singer], clip
 
     def ensure(self, labels):
-        for label in labels:
-            bank, clip = self._of(label)
+        """The clips not made yet are made now, a third of a second each: said as it goes."""
+        missing = [(bank, clip) for bank, clip in map(self._of, labels) if not bank.path(clip).exists()]
+        for i, (bank, clip) in enumerate(missing):
+            print(f"\r\x1b[Kpitching the sung notes {i + 1} / {len(missing)} (once per key)", end="", flush=True)
             bank.ensure([clip])
 
     def load(self, label):

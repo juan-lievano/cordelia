@@ -60,6 +60,9 @@ def main(argv=None):
     m.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     m.add_argument("--bpm", type=float)
     m.add_argument("--singer", help=" | ".join(SINGERS) + ": who sings whatever they have samples near; the other sings the rest")
+    m.add_argument("--shape", help=" | ".join(melody.SHAPES) + ": under the sung melody, a mark under each note as high as "
+                                   "the note is above the melody's lowest (slabs: 8 heights a row, in terminals that "
+                                   "draw them; braille: 4)")
     session_flags(m)
 
     c = sub.add_parser("chords", help="chord qualities, the answer spoken then arpeggiated after each")
@@ -246,9 +249,9 @@ def play(mode, a, run=None):
         rows = [*mode.settings(config), ("minutes", f"{score.seconds / 60:.0f} ({len(items)} questions)"),
                 ("tags", ", ".join(tg) or "none")]
         status = lambda cur, n, keys, revealed: mode.status(  # noqa: E731
-            cur, n, scorer.typed(keys, keymap, config["keys"]), config, items[cur - 1]["truth"] if revealed else None)
-        widest = [mode.status(len(items), len(items), [label] * config["keys"], config, answer).split("\n")
-                  for label in set(keymap.values()) for answer in (None, label)]
+            cur, n, scorer.typed(keys, keymap, config["keys"]), config, items[cur - 1] if revealed else None)
+        widest = [mode.status(len(items), len(items), [label] * config["keys"], config, item).split("\n")
+                  for label in set(keymap.values()) for item in (None, dict(truth=label, meta={}))]
         text_width = max(len(l) for text in widest for l in text)
         text_height = max(len(text) for text in widest)
         hint = [textwrap.fill(l, width) for l in mode.hint(config, width).split("\n")]
@@ -383,7 +386,7 @@ def cmd_review(a):
     degs = list(degrees.parse_degrees(a.degrees)) if a.degrees else list(review.DEFAULT)
     key = rng.choice(degrees.key_pool(a.key_pool) if a.key_pool else degrees.NOTE_NAMES)
     track, bank, parts = review.build(degs, key, a.bpm, a.minutes, rng, store.data_dir(), max(1, a.repeat), a.voice)
-    title = f"review · {' '.join(degs)} · key {key} · {a.bpm:g} bpm · {track.score.seconds / 60:.0f} min"
+    title = f"review · {' '.join(degs)} · {key} {'minor' if review.minor(degs) else 'major'} · {a.bpm:g} bpm · {track.score.seconds / 60:.0f} min"
     top, bottom = staff.rows(key, [c for x in track.excerpts for c in x])
     cells = max(1, min(review.CELLS, max(len(x) for x in track.excerpts),
                        (shutil.get_terminal_size().columns - 2 - 2 * stats.PAD - staff.MARGIN - 1) // staff.CELL))
@@ -395,7 +398,7 @@ def cmd_review(a):
         on = sum(1 for s in starts if s <= t) - 1
         body = "  ".join(("▸" if j == on else " ") + name for j, (name, _) in enumerate(parts))
         if tall:
-            body += "\n\n" + "\n".join(staff.draw(key, track.excerpts[x], top, bottom, lit, named, cells))
+            body += "\n\n" + "\n".join(staff.draw(key, track.excerpts[x], top, bottom, lit, named, cells, review.minor(degs)))
         return staff.colour(stats.centred(stats.box(title, body + "\n\nEsc stops.")))
 
     height = [0]
