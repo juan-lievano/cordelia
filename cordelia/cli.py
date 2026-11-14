@@ -51,6 +51,9 @@ def main(argv=None):
                         + ", ".join(f"{w} = {' '.join(l)}" for w, l in degrees.SHORTHANDS.items()))
     m.add_argument("--octaves", type=int, help="1, 2 or 3: the list that many times over, up from the tonic that keeps them "
                                                "nearest the middle of the piano")
+    m.add_argument("--register", help=" | ".join(melody.REGISTERS) + ": where the octaves sit; low is a bass line (one octave: "
+                                      "the tonic E1 to Eb2), high an octave over middle. A melody with a note no singer "
+                                      "recorded is spoken, not sung")
     m.add_argument("--length", type=int, help="notes in a melody")
     m.add_argument("--spread", type=float,
                    help="how far a move tends to go: a move of d positions along the notes weighs spread^(d-1), "

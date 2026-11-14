@@ -29,6 +29,7 @@ python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, 
 python3 -m cordelia melody                         # the last melody session's settings (at first: 5 min, four notes on 1 to 5, mostly stepwise, 55 BPM), sung back
 python3 -m cordelia melody 1 2 b3 4 5 --length 3 --spread 0.5 --key G --singer chengu
 python3 -m cordelia melody minor --octaves 2       # the list twice over, up from the tonic (1, 2 or 3 octaves)
+python3 -m cordelia melody minor --register low    # a bass line: the tonic E1 to Eb2 (low, middle or high)
 python3 -m cordelia chords                         # the last chords session's settings (at first: 4 min, 50 BPM, level 1)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
 python3 -m cordelia review                         # listen to b3 4 b7 in a fresh key: cadence, scales, the tonic, pairs, triples, named, on a staff as it plays; nothing recorded
@@ -148,9 +149,13 @@ pitched to the note by TD-PSOLA (`cordelia/psola.py`), which moves the
 pitch and leaves the singer's speed and vowel alone, so any key sounds
 like her, a sample pitched six semitones at most.
 `--singer`
-picks `jennifer` (default) or `chengu`, who sings every melody they have
-samples near; a melody out of their reach is sung by the other (jennifer's
-samples are C3 to B5, chengu's C2 to B4). The sung clips are made once per
+picks `jennifer` (default) or `chengu`, who sings every melody that stays within
+the notes they recorded; one that does not is sung by the other, or note by note by
+whoever recorded each (jennifer's samples are C3 to B5, chengu's C2 to B4, of which he is
+given G2 up: lower they are not pleasant), and a melody
+with a note under G2 or over B5 is spoken instead, a degree a beat ("one, flat three"):
+since 2026-11-14, before which a note up to six semitones past a singer's range was still
+sung. The sung clips are made once per
 note under `data/voices/sung-<singer>/`.
 
 The recipe is given on the command line, as in the degrees mode: the
@@ -165,11 +170,14 @@ from the tonic, the one that puts their middle nearest G4: G3 to F#4 for
 one octave, as before there were octaves, C#3 to C4 for two, G2 to F#3 for
 three, and an octave off that where a note would otherwise be more than six
 semitones from every sample (the highest do there is to sing is F#5, so
-three octaves with an 8 sit an octave lower: G1 to F#2 up to G4 to F#5). An
+three octaves with an 8 sit an octave lower: G1 to F#2 up to G4 to F#5). `--register low` puts the
+octaves in the bass instead (one octave: the tonic E1 to Eb2), played with a fuller tone
+and the drone an octave up, and `--register high` an octave over the middle (the tonic G4
+to F#5); these go where asked, whatever can be sung, nothing under E1 or over C7. An
 answer is the degrees in any octave, and the melody is shown that way once
 sung (`1 7 5 6 1 6`, the 8 as 1), with `--shape slabs` or `--shape braille` a mark under
 each note as high as the note is above the melody's lowest (a level per scale step, 8 or 4 to
-a row; `none` turns it off). The five together are the exercise the stats group
+a row; `none` turns it off). The five together, and the register when it is not the middle, are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
 typed, and so is `--length 5` or `--hearings 2` on a list already played. The two numbered
 levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the

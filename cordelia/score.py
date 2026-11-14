@@ -1,7 +1,7 @@
 """A score: what sounds when. Modes write one; the renderer makes a WAV of it.
 
 Three kinds of thing can sound: a note (a pitch, for a duration, on a named
-instrument: "tone", or "click" for the metronome tick), a clip (a labelled
+instrument: "tone", "bass" for a low line, or "click" for the metronome tick), a clip (a labelled
 sample from the voice bank, e.g. the word "four" or a sung "mi@64"), and a
 drone that holds for the whole score. Times are seconds from
 sample zero of the rendered file, so a key file written from the same score

@@ -82,6 +82,9 @@ SINGERS = {
     "jennifer": dict(folder="jennifer/notes", low=48, high=83, lead=0.135),
     "chengu": dict(folder="chengu/notes", low=36, high=71, lead=0.130),
 }
+# What each is given to sing, by ear: chengu's samples under G2 are there but are not a voice
+# one wants to hear (2026-11-14, a low session in A: "nobody can sing this").
+SINGS = {"jennifer": (48, 83), "chengu": (43, 71)}
 SOTORRIO = ("do", "ga", "re", "nu", "mi", "fa", "jur", "so", "ki", "la", "pe", "ti")
 SYLLABLE = {"1": "do", "2": "re", "3": "mi", "4": "fa", "5": "so", "6": "la", "7": "ti", "8": "do",
             "b2": "ga", "b3": "nu", "b5": "jur", "b6": "ki", "b7": "pe"}
@@ -89,6 +92,11 @@ SOURCE_RATE = 44100
 MAX_SHIFT = 6                # semitones a sample is pitched by, at most: the nearest octave
 GATE = 0.01                  # of the peak: the leading silence is cut here
 VOWEL = 0.5                  # of the peak: where the vowel is taken to land
+
+
+def sampled(singer, midi):
+    """Whether the note is one the singer recorded and sings well."""
+    return SINGS[singer][0] <= midi <= SINGS[singer][1]
 
 
 def shift(singer, syllable, midi):
@@ -169,16 +177,18 @@ class SungBank(VoiceBank):
 
 class Choir:
     """Every singer's bank as one: a label is `<singer>/<syllable>@<midi>`, so a session can
-    have each melody sung by whoever has samples near it."""
+    have each melody sung by whoever has samples near it; and the spoken bank, its labels
+    `spoken/<degree>`, for a melody nobody can sing."""
 
     name = "sung"
 
     def __init__(self, data_dir):
         self.banks = {singer: SungBank(singer, data_dir) for singer in SINGERS}
+        self.spoken = VoiceBank("default", data_dir)
 
     def _of(self, label):
         singer, clip = label.split("/")
-        return self.banks[singer], clip
+        return (self.spoken if singer == "spoken" else self.banks[singer]), clip
 
     def ensure(self, labels):
         """The clips not made yet are made now, a third of a second each: said as it goes."""

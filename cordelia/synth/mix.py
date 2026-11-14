@@ -24,6 +24,7 @@ CLIP_RELEASE = 0.25          # and fades out over this, cut short or not
 # A Note's `voice` names one of these; each makes a segment for one note.
 VOICES = {
     "tone": lambda n: tone.segment(midi_to_freq(n.midi), int(SAMPLE_RATE * n.dur), MELODY_LEVEL * n.level),
+    "bass": lambda n: tone.segment(midi_to_freq(n.midi), int(SAMPLE_RATE * n.dur), MELODY_LEVEL * n.level, bass=True),
     "chord": lambda n: chord.segment(midi_to_freq(n.midi), int(SAMPLE_RATE * n.dur), MELODY_LEVEL * n.level),
     "click": lambda n: click.segment(MELODY_LEVEL * n.level),
 }

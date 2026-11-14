@@ -26,7 +26,7 @@ SETTINGS = {
               BPM, MINUTES, ("run", lambda c: f"{c['run']['minutes']:g}" if c.get("run") else ""),
               ("answer", lambda c: c.get("answer", "spoken")), ("voice", lambda c: c.get("voice", "")), KEYS],
     "melody": [("degrees", lambda c: short(c["degrees"]) if c.get("degrees") else ""),
-               ("octaves", lambda c: str(c.get("octaves", 1))),
+               ("octaves", lambda c: str(c.get("octaves", 1))), ("register", lambda c: c.get("register", "middle")),
                ("length", lambda c: str(c.get("length", ""))), ("spread", lambda c: f"{c['spread']:g}" if "spread" in c else ""),
                ("hearings", lambda c: str(c.get("hearings", ""))), BPM, MINUTES, ("singer", lambda c: c.get("singer", "")), KEYS],
     "chords": [("level", lambda c: str(c.get("level", ""))), BPM, MINUTES, ("voice", lambda c: c.get("voice", ""))],

@@ -10,9 +10,9 @@ singing starts is the answer.
 
 The exercise is described on the command line, as in the degrees mode:
 which degrees a melody may use (any of the twelve, and 8 for the tonic on
-top), over how many octaves,
+top), over how many octaves and in which register,
 how many notes, how far a move tends to go, and how many times a melody is
-played. There is no level table; the five together are the exercise, and every answer is stored the same way (the degrees as a
+played. There is no level table; these together are the exercise, and every answer is stored the same way (the degrees as a
 space-separated string), so the stats read across them.
 """
 
@@ -21,8 +21,8 @@ import random
 
 from ..score import Clip, Note, Score
 from ..staff import spell
-from ..voice import MAX_SHIFT, SINGERS, SYLLABLE, Choir, shift, sung_label
-from .degrees import FLAT_ROW, HOME_ROW, NOTE_NAMES, SEMITONES, draw_key, key_pool, key_text, parse_degrees, parse_key, short, tonic_midi
+from ..voice import MAX_SHIFT, SINGERS, SYLLABLE, Choir, sampled, shift, sung_label
+from .degrees import FLAT_ROW, HOME_ROW, NOTE_NAMES, SEMITONES, SPOKEN, draw_key, key_pool, key_text, parse_degrees, parse_key, short, tonic_midi
 
 NAME = "melody"
 
@@ -38,6 +38,15 @@ LABEL = {semitones: d for d, semitones in SEMITONES.items()}
 CENTRE = 67
 OCTAVES = (1, 2, 3)
 
+# --register: where the octaves sit, as the note their middle is nearest. `middle` is the
+# placement above, and what every session before there were registers had. `low` is a bass
+# line (one octave: the tonic E1 to Eb2) and `high` an octave over middle (the tonic G4 to
+# F#5); these two go where they are asked whatever the singers can reach, an octave nearer
+# the middle only where a note would be under FLOOR or over CEILING. A low session's notes
+# are the bass voice, and its drone an octave up, out of the line's way.
+REGISTERS = dict(low=40, middle=CENTRE, high=79)
+FLOOR, CEILING = 28, 96        # E1, C7: lower and the pitch is hard to hear, higher and the tone is thin
+
 # degrees: what a melody may use; octaves: over how many; length: how many notes;
 # spread: how far a move tends to go, the weight of a move of d positions along the
 # notes (the list, octave after octave) being spread ** (d - 1), so 0 is steps only
@@ -45,7 +54,7 @@ OCTAVES = (1, 2, 3)
 # first note is uniform);
 # hearings: how many times a melody is played before the answer.
 DEFAULTS = dict(minutes=5.0, key_pool=["all"], bpm=55.0, degrees=("1", "2", "3", "4", "5"), octaves=1, length=4, spread=0.2,
-                hearings=3, singer="jennifer", shape="none")
+                hearings=3, singer="jennifer", shape="none", register="middle")
 
 # --shape: under the sung melody, a mark under each note as high as the note is above the
 # melody's lowest, a level per scale step; the levels a character has, low to high. A row of
@@ -99,12 +108,18 @@ def keymap():
 def notes(config):
     """The MIDI notes a melody is drawn from, low to high. Sessions before 2026-11-13 had
     no `octaves`, and were one."""
-    pc, octaves = parse_key(config["key"]), config.get("octaves", 1)
-    target = CENTRE - 6 * octaves
+    pc, octaves, register = parse_key(config["key"]), config.get("octaves", 1), config.get("register", "middle")
+    target = REGISTERS[register] - 6 * octaves
     tonic = target + (pc - target + 6) % 12 - 6
     steps = sorted({SEMITONES[d] for d in config["degrees"] if d != "8"})
-    placed = [[low + 12 * o + s for o in range(octaves) for s in steps] + [low + 12 * octaves] * ("8" in config["degrees"])
-              for low in (tonic, tonic - 12, tonic + 12, tonic - 24, tonic + 24)]
+    place = lambda low: [low + 12 * o + s for o in range(octaves) for s in steps] + [low + 12 * octaves] * ("8" in config["degrees"])   # noqa: E731
+    if register != "middle":
+        while max(place(tonic)) > CEILING:
+            tonic -= 12
+        while min(place(tonic)) < FLOOR:
+            tonic += 12
+        return place(tonic)
+    placed = [place(low) for low in (tonic, tonic - 12, tonic + 12, tonic - 24, tonic + 24)]
     # the fewest notes no singer has a sample near, the nearest to the centre first
     return min(placed, key=lambda among: sum(not near(config, m) for m in among))
 
@@ -114,20 +129,23 @@ def near(config, midi):
     return [s for s in SINGERS if shift(s, SYLLABLE[label(config, midi)], midi) <= MAX_SHIFT]
 
 
+def able(config, midi):
+    """The singers who can sing the note as themselves: it is within what they recorded and
+    sing well (voice.SINGS), and a sample of its syllable is near. Since 2026-11-14; before, near was enough,
+    and a note up to six semitones past a singer's range was still sung."""
+    return [s for s in near(config, midi) if sampled(s, midi)]
+
+
 def singers(config, midis):
-    """Who sings each note of a melody: the session's singer if she has all of it, else the
-    other if they have, else each note by whoever has it (the session's singer first)."""
+    """Who sings each note of a melody: the session's singer if she can all of it, else the
+    other if they can, else each note by whoever can (the session's singer first). None when
+    some note is nobody's: the melody is then spoken."""
     order = sorted(SINGERS, key=lambda s: s != config.get("singer"))
-    whole = [s for s in order if all(s in near(config, m) for m in midis)]
+    whole = [s for s in order if all(s in able(config, m) for m in midis)]
     if whole:
         return [whole[0]] * len(midis)
-    out = []
-    for m in midis:
-        able = [s for s in order if s in near(config, m)]
-        if not able:
-            raise SystemExit(f"no singer has a {SYLLABLE[label(config, m)]!r} near MIDI {m}")
-        out.append(able[0])
-    return out
+    each = [[s for s in order if s in able(config, m)] for m in midis]
+    return [who[0] for who in each] if all(each) else None
 
 
 def label(config, midi):
@@ -148,7 +166,8 @@ def recipe(config, brief=False):
     else:
         moves = "any move" if config["step"] is None else f"step {config['step']:g}"
     return ((short if brief else " ".join)(config["degrees"]),
-            ", ".join([*([span(config)] if config.get("octaves", 1) > 1 else []), f"{config['length']} notes", moves, f"heard {config['hearings']}x"]))
+            ", ".join([*([config["register"]] if config.get("register", "middle") != "middle" else []),
+                       *([span(config)] if config.get("octaves", 1) > 1 else []), f"{config['length']} notes", moves, f"heard {config['hearings']}x"]))
 
 
 def exercise(config, brief=False):
@@ -157,11 +176,14 @@ def exercise(config, brief=False):
 
 
 def settings(config):
-    """The session's settings for its box, as (name, value) rows."""
+    """The session's settings for its box, as (name, value) rows; the register with the
+    session's lowest and highest note."""
+    among = notes(config)
+    pitch = lambda m: f"{NOTE_NAMES[m % 12]}{m // 12 - 1}"      # noqa: E731
     moves = (("spread", f"{config['spread']:g}") if "spread" in config else
              ("step", "any move" if config["step"] is None else f"{config['step']:g}"))
     return [("key", key_text(config)), ("degrees", " ".join(config["degrees"])),
-            ("octaves", f"{config.get('octaves', 1)}"),
+            ("octaves", f"{config.get('octaves', 1)}"), ("register", f"{config.get('register', 'middle')} ({pitch(among[0])} to {pitch(among[-1])})"),
             ("length", f"{config['length']} notes"), moves, ("hearings", f"{config['hearings']}"),
             ("bpm", f"{config['bpm']:g}"), ("singer", config.get("singer", "jennifer"))]
 
@@ -172,7 +194,8 @@ class Builder:
         self.bank = bank
         self.beat = 60.0 / config["bpm"]
         self.pc = parse_key(config["key"])
-        self.score = Score(drone={"midi": 36 + self.pc}, voice=bank.name)
+        self.low = config.get("register", "middle") == "low"
+        self.score = Score(drone={"midi": (48 if self.low else 36) + self.pc}, voice=bank.name)
 
     def midi(self, degree, octave=0):
         return tonic_midi(self.pc) + DEGREES[degree] + 12 * octave
@@ -183,7 +206,7 @@ class Builder:
     def melody(self, t, midis):
         """The notes a beat each from t. Returns next_t."""
         for m in midis:
-            self.score.notes.append(Note(t, self.beat + RING, m))
+            self.score.notes.append(Note(t, self.beat + RING, m, voice="bass" if self.low else "tone"))
             t += self.beat
         return t
 
@@ -195,8 +218,15 @@ class Builder:
 
     def sing(self, t, midis):
         """The answer, a note a beat on its own pitch; each sung note's vowel
-        lands on the beat and holds a little under the next. Returns next_t."""
-        for i, (m, singer) in enumerate(zip(midis, singers(self.config, midis))):
+        lands on the beat and holds a little under the next. A melody with a note nobody
+        can sing is spoken instead, a degree a beat. Returns next_t."""
+        who = singers(self.config, midis)
+        if who is None:
+            for m in midis:
+                self.score.clips.append(Clip(t, f"spoken/{label(self.config, m)}"))
+                t += self.beat
+            return t
+        for i, (m, singer) in enumerate(zip(midis, who)):
             clip = self.sung(m, singer)
             lead = self.bank.lead(clip)
             last = i == len(midis) - 1
@@ -257,7 +287,7 @@ def draw(rng, config, count):
 def sung_labels(config):
     """Every sung clip a session at this config could need."""
     b = Builder(config, _NoBank())
-    return [b.sung(m, s) for m in notes(config) for s in near(config, m)]
+    return [b.sung(m, s) for m in notes(config) for s in able(config, m)]
 
 
 class _NoBank:
@@ -268,6 +298,9 @@ def bank(config, data_dir):
     """The singers' banks, with every clip the session can ask for."""
     b = Choir(data_dir)
     b.ensure(sung_labels(config))
+    among = notes(config)
+    if not all(able(config, m) for m in among):
+        b.spoken.ensure({d: SPOKEN[d] for d in {label(config, m) for m in among}})
     return b
 
 
@@ -287,10 +320,12 @@ def configure(a, last_config, rng):
         raise SystemExit("--spread is 0 (steps only) to 1 (any other degree, equally)")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
+    if a.register not in REGISTERS:
+        raise SystemExit(f"--register is {', '.join(REGISTERS)}")
     if a.shape not in SHAPES:
         raise SystemExit(f"--shape is {', '.join(SHAPES)}")
     config = dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=bpm, degrees=list(degrees), octaves=a.octaves,
-                  length=length, spread=spread, hearings=hearings, singer=a.singer, shape=a.shape, keys=length)
+                  length=length, spread=spread, hearings=hearings, singer=a.singer, shape=a.shape, register=a.register, keys=length)
     if a.singer not in SINGERS:
         raise SystemExit(f"singer {a.singer!r}: choose from {', '.join(SINGERS)}")
     return config
@@ -309,9 +344,9 @@ def step(config, midi):
 
 
 @functools.lru_cache
-def reach(key, degrees, octaves):
+def reach(key, degrees, octaves, register):
     """How many scale steps the session's notes span, both ends counted."""
-    config = dict(key=key, degrees=degrees, octaves=octaves)
+    config = dict(key=key, degrees=degrees, octaves=octaves, register=register)
     steps = [step(config, m) for m in notes(config)]
     return max(steps) - min(steps) + 1
 
@@ -324,7 +359,7 @@ def shape(config, midis, width):
     levels = SHAPES[config.get("shape", "none")]
     if not levels:
         return []
-    rows = -(-reach(config["key"], tuple(config["degrees"]), config.get("octaves", 1)) // len(levels))
+    rows = -(-reach(config["key"], tuple(config["degrees"]), config.get("octaves", 1), config.get("register", "middle")) // len(levels))
     steps = [step(config, m) for m in midis or []]
     high = [s - min(steps) for s in steps]
     used = max(high, default=-1) // len(levels) + 1
@@ -359,7 +394,7 @@ def build_session(config, bank, rng=None):
         window_end, nxt = b.phrase(t, midis)
         degrees = [label(config, m) for m in midis]
         items.append(dict(idx=idx, truth=" ".join(degrees), ask_s=t, window_end_s=window_end,
-                          meta=dict(degrees=degrees, midis=midis)))
+                          meta=dict(degrees=degrees, midis=midis, answer="sung" if singers(config, midis) else "spoken")))
         t = nxt
     b.score.seconds = t + OUTRO_SECONDS
     return b.score, items, keymap()
