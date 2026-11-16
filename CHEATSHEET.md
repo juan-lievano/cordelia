@@ -22,7 +22,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;flats | b2 ga · b3 nu · b5 jur · b6 ki · b7 pe         |
 |                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
 |                | &nbsp;flat | twice (`33`) or shifted (`>`) = b3; `333` = 3   |
-|                | &nbsp;no 3 and b3 both | `3` = the b3 the list asks, `33` = 3 (the box says) |
+|                | &nbsp;only b3, or only 3 | every 3 key is that one (the box says)      |
 |                | &nbsp;counts | the last key before the voice                   |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
 | **Focus**      | `cordelia focus`                       | last focus session's settings, `--run` too      |
@@ -51,7 +51,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;exercise | list + range + length + spread + hearings |
 |                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
 |                | &nbsp;flat | shifted: `H < > N E I L Y` (`>` = b3)           |
-|                | &nbsp;no 3 and b3 both | `3` = the b3 the list asks (the box says)  |
+|                | &nbsp;only b3, or only 3 | every 3 key is that one (the box says)  |
 |                | &nbsp;counts | what stands when the singing starts             |
 |                | &nbsp;past the last note / backspace | starts over / clears                            |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |

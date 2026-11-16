@@ -239,29 +239,35 @@ FLAT_ROW = "H<>NEIL"    # the home-row keys shifted: the flat under each
 
 
 def flat_keys(degrees):
-    """The degrees whose plain key means the flat: those the list asks flat, when it asks no
-    degree both flat and natural (minor: 3 6 7), so the key alone says which; none when it
-    does ask one both ways. Since 2026-11-16; before, a plain key was always the natural."""
-    flats = [d[1:] for d in degrees if d.startswith("b")]
-    return [] if any(d in degrees for d in flats) else sorted(flats)
+    """The degrees whose keys all mean the flat: those the list asks flat and not natural
+    (minor: 3 6 7). Since 2026-11-16; before, a plain key was always the natural."""
+    return sorted(d[1:] for d in degrees if d.startswith("b") and d[1:] not in degrees)
 
 
 def keymap(degrees=()):
-    """Digits and home-row keys name the naturals, or the flats of flat_keys(degrees); the same
-    key twice names the other of the two (`33` is b3; once more, `333`, is 3 again), and the home-row key shifted
-    is always the flat (`>` is b3); 8 (or u) is another 1 and 9 (or y) another 2, an octave up. Every degree is typeable whatever the
-    list asked, so a flat answered in a major session is recorded as what it was."""
-    km, flat = {}, flat_keys(degrees)
+    """Digits and home-row keys name the naturals; the same key twice names the flat under it
+    (`33` is b3; once more, `333`, is 3 again), and so does the home-row key shifted (`>` is b3);
+    8 (or u) is another 1 and 9 (or y) another 2, an octave up. That for a degree the list asks
+    both ways, or neither; one it asks only flat, or only natural, is that whatever the key,
+    plain, twice or shifted (since 2026-11-16: `3` is b3 in minor, `33` is 3 in major; before,
+    every degree was typeable whatever the list asked)."""
+    km = {}
     for d, keys, shifted in [*((d, (str(d), HOME_ROW[d - 1]), FLAT_ROW[d - 1]) for d in range(1, 8)),
                              (1, "8u", None), (2, "9y", "Y")]:
-        once, twice = (f"b{d}", str(d)) if str(d) in flat else (str(d), f"b{d}")
+        natural, flat = str(d), f"b{d}" if f"b{d}" in SEMITONES else None
+        only = None if (natural in degrees) == (flat in degrees) else natural if natural in degrees else flat
         for k in keys:
-            if f"b{d}" in SEMITONES:
-                km[k + k] = twice
-            km[k] = once
-        if shifted and f"b{d}" in SEMITONES:
-            km[shifted] = f"b{d}"
+            km[k] = only or natural
+            if flat and not only:
+                km[k + k] = flat
+        if shifted and flat:
+            km[shifted] = only or flat
     return dict(sorted(km.items(), key=lambda kv: SEMITONES[kv[1]]))
+
+
+def both_ways(degrees):
+    """The first degree the list asks flat and natural, as its digit, or none."""
+    return next((d[1:] for d in degrees if d.startswith("b") and d[1:] in degrees), None)
 
 
 KEYS = f"1-9 {HOME_ROW}uy"      # the hint's first words
@@ -378,8 +384,8 @@ def check_range(config, least):
 
 def hint(config, width):
     """The keys, and with a sung answer the asked flats' syllables (do re mi go without saying)."""
-    plain = flat_hint(degrees_of(config))
-    keys = GAP.join([KEYS, *([plain, f"natural {plain[0] * 2}"] if plain else ["flat 33 >"])])
+    plain, both = flat_hint(degrees_of(config)), both_ways(degrees_of(config))
+    keys = GAP.join([KEYS, *filter(None, [plain, both and f"flat {both * 2} {FLAT_ROW[int(both) - 1]}"])])
     flats = sung_hint(degrees_of(config))
     return keys + ("\n" + flats if config.get("answer") == "sung" and flats else "")
 

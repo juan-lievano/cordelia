@@ -22,7 +22,7 @@ from ..score import Clip, Note, Score
 from ..staff import spell
 from ..voice import MAX_SHIFT, SINGERS, SYLLABLE, Choir, sampled, shift, sung_label
 from .degrees import keymap as degrees_keymap
-from .degrees import (ANSWERS, GAP, KEYS, NOTE_NAMES, RANGES, SEMITONES, SPOKEN, bass, check_range, draw_key, flat_hint, in_range,
+from .degrees import (ANSWERS, FLAT_ROW, GAP, KEYS, NOTE_NAMES, RANGES, SEMITONES, SPOKEN, bass, both_ways, check_range, draw_key, flat_hint, in_range,
                       key_pool, key_text, sung_hint, parse_degrees, parse_key, parse_range, range_name, range_words, short, span_text, tonic_midi)
 
 NAME = "melody"
@@ -86,8 +86,8 @@ CADENCE_BASS = (("1", -1), ("5", -1))
 
 def keymap(degrees=()):
     """Digits and home-row keys name the naturals, the shifted home-row key
-    the flat under it; and so does the plain key for a degree the list asks flat, when it
-    asks none both ways (degrees.flat_keys, since 2026-11-16: its natural has no key then)."""
+    the flat under it; a degree the list asks only flat, or only natural, is that by either
+    key (degrees.keymap, since 2026-11-16)."""
     return {k: label for k, label in degrees_keymap(degrees).items() if len(k) == 1}
 
 
@@ -311,7 +311,9 @@ def configure(a, last_config, rng):
 def hint(config, width):
     """The keys and the flats' syllables."""
     flats = sung_hint(config["degrees"])
-    return GAP.join([KEYS, flat_hint(config["degrees"]) or "flat >"]) + ("\n" + flats if flats else "")
+    both = both_ways(config["degrees"])
+    return GAP.join([KEYS, *filter(None, [flat_hint(config["degrees"]), both and f"flat {FLAT_ROW[int(both) - 1]}"])]) + (
+        "\n" + flats if flats else "")
 
 
 def step(config, midi):

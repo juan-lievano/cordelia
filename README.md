@@ -66,7 +66,7 @@ questions start, each at 50 BPM (1.2 s a beat; `--bpm` changes it):
 
 ```
 beats 1-2   the note           — press 1-7 (8 is 1), or h , . n e i l (u is 1); the same key twice, or shifted, for the flat (33 or > = ♭3), a third time for the natural again
-            — a list with no degree both flat and natural (minor): the key once is the flat it asks (3 = ♭3), twice the natural (since 2026-11-16)
+            — a degree the list asks only flat, or only natural, is that whatever the key (minor: 3, 33 and > are all ♭3; major: all 3), since 2026-11-16
 beats 3-4   silence            — the answer window; the last key pressed in it counts
 beat  5     the voice says it  — "four", "flat seven"
 beats 6-7   the note again
@@ -152,7 +152,7 @@ At 55 BPM, the first session's tempo, a beat is 1.09 s (`--bpm` changes it; late
 
 Type the degrees as you make them out, one key per note (1-7, or
 h , . n e i l; shifted for the flat, since a key twice is a repeated note
-here; when the list asks no degree both flat and natural, as minor, the plain key is the flat it asks too, 3 for b3, and the box says so: since 2026-11-16). A degree is the same key in any octave: 1 answers an 8 (and the 8 key, or u, is another 1), and the
+here; a degree the list asks only flat, as the 3 of minor, or only natural, is that by either key, 3 for b3, and the box says so: since 2026-11-16). A degree is the same key in any octave: 1 answers an 8 (and the 8 key, or u, is another 1), and the
 scorer folds the two before comparing (since 2026-11-08; before, 8 and u
 were the tonic above). A note past the last starts the answer over,
 backspace clears it, and what stands when the singing starts is the
