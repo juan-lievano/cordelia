@@ -21,8 +21,9 @@ import random
 from ..score import Clip, Note, Score
 from ..staff import spell
 from ..voice import MAX_SHIFT, SINGERS, SYLLABLE, Choir, sampled, shift, sung_label
-from .degrees import (ANSWERS, FLAT_ROW, HOME_ROW, NOTE_NAMES, RANGES, SEMITONES, SPOKEN, bass, check_range, draw_key, in_range, key_pool,
-                      key_text, parse_degrees, parse_key, parse_range, range_name, range_words, short, span_text, tonic_midi)
+from .degrees import keymap as degrees_keymap
+from .degrees import (ANSWERS, GAP, KEYS, NOTE_NAMES, RANGES, SEMITONES, SPOKEN, bass, check_range, draw_key, flat_hint, in_range,
+                      key_pool, key_text, sung_hint, parse_degrees, parse_key, parse_range, range_name, range_words, short, span_text, tonic_midi)
 
 NAME = "melody"
 
@@ -83,18 +84,11 @@ CADENCE_BASS = (("1", -1), ("5", -1))
 # another 1 for the hand that reaches for it, as 9 (y) is another 2; before 2026-11-08, 8 and u were the tonic above.
 
 
-def keymap():
+def keymap(degrees=()):
     """Digits and home-row keys name the naturals, the shifted home-row key
-    the flat under it."""
-    km = {}
-    for d in range(1, 8):
-        km[str(d)] = km[HOME_ROW[d - 1]] = str(d)
-        if f"b{d}" in SEMITONES:
-            km[FLAT_ROW[d - 1]] = f"b{d}"
-    km["8"] = km["u"] = "1"
-    km["9"] = km["y"] = "2"
-    km["Y"] = "b2"
-    return km
+    the flat under it; and so does the plain key for a degree the list asks flat, when it
+    asks none both ways (degrees.flat_keys, since 2026-11-16: its natural has no key then)."""
+    return {k: label for k, label in degrees_keymap(degrees).items() if len(k) == 1}
 
 
 def notes(config):
@@ -316,9 +310,8 @@ def configure(a, last_config, rng):
 
 def hint(config, width):
     """The keys and the flats' syllables."""
-    flats = ", ".join(f"{d} {SYLLABLE[d]}" for d in config["degrees"] if d.startswith("b"))
-    return (f"keys 1-9 or {HOME_ROW}uy (8 is 1, 9 is 2); flat: shifted, {FLAT_ROW}Y (> is b3)"
-            + (f"\nflats sung: {flats}" if flats else ""))
+    flats = sung_hint(config["degrees"])
+    return GAP.join([KEYS, flat_hint(config["degrees"]) or "flat >"]) + ("\n" + flats if flats else "")
 
 
 def step(config, midi):
@@ -382,5 +375,5 @@ def build_session(config, bank, rng=None):
                           meta=dict(degrees=degrees, midis=midis, answer="sung" if singers(config, midis) else "spoken")))
         t = nxt
     b.score.seconds = t + OUTRO_SECONDS
-    return b.score, items, keymap()
+    return b.score, items, keymap(config["degrees"])
 

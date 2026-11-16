@@ -238,23 +238,45 @@ HOME_ROW = "h,.neil"
 FLAT_ROW = "H<>NEIL"    # the home-row keys shifted: the flat under each
 
 
-def keymap():
-    """Digits and home-row keys name the naturals; the same key twice names
-    the flat under it (`33` is b3; once more, `333`, is 3 again), and so does the home-row key shifted
-    (`>` is b3); 8 (or u) is another 1 and 9 (or y) another 2, an octave up. Every degree is typeable whatever the
+def flat_keys(degrees):
+    """The degrees whose plain key means the flat: those the list asks flat, when it asks no
+    degree both flat and natural (minor: 3 6 7), so the key alone says which; none when it
+    does ask one both ways. Since 2026-11-16; before, a plain key was always the natural."""
+    flats = [d[1:] for d in degrees if d.startswith("b")]
+    return [] if any(d in degrees for d in flats) else sorted(flats)
+
+
+def keymap(degrees=()):
+    """Digits and home-row keys name the naturals, or the flats of flat_keys(degrees); the same
+    key twice names the other of the two (`33` is b3; once more, `333`, is 3 again), and the home-row key shifted
+    is always the flat (`>` is b3); 8 (or u) is another 1 and 9 (or y) another 2, an octave up. Every degree is typeable whatever the
     list asked, so a flat answered in a major session is recorded as what it was."""
-    km = {}
-    for d in range(1, 8):
-        for k in (str(d), HOME_ROW[d - 1]):
+    km, flat = {}, flat_keys(degrees)
+    for d, keys, shifted in [*((d, (str(d), HOME_ROW[d - 1]), FLAT_ROW[d - 1]) for d in range(1, 8)),
+                             (1, "8u", None), (2, "9y", "Y")]:
+        once, twice = (f"b{d}", str(d)) if str(d) in flat else (str(d), f"b{d}")
+        for k in keys:
             if f"b{d}" in SEMITONES:
-                km[k + k] = f"b{d}"
-            km[k] = str(d)
-        if f"b{d}" in SEMITONES:
-            km[FLAT_ROW[d - 1]] = f"b{d}"
-    km["8"] = km["u"] = "1"
-    km["9"] = km["y"] = "2"
-    km["99"] = km["yy"] = km["Y"] = "b2"
+                km[k + k] = twice
+            km[k] = once
+        if shifted and f"b{d}" in SEMITONES:
+            km[shifted] = f"b{d}"
     return dict(sorted(km.items(), key=lambda kv: SEMITONES[kv[1]]))
+
+
+KEYS = f"1-9 {HOME_ROW}uy"      # the hint's first words
+GAP = " · "                     # between the hint's parts
+
+
+def flat_hint(degrees):
+    """The hint's part for the plain keys that mean flats (`3 6 7 = b3 b6 b7`), or none."""
+    flat = flat_keys(degrees)
+    return f"{' '.join(flat)} = {' '.join('b' + d for d in flat)}" if flat else ""
+
+
+def sung_hint(degrees):
+    """The asked flats' syllables (do re mi go without saying)."""
+    return "  ".join(f"{d} {SYLLABLE[d]}" for d in degrees if d.startswith("b"))
 
 
 LABELS = tuple(dict.fromkeys(keymap().values()))   # the order the stats list the degrees in
@@ -356,11 +378,10 @@ def check_range(config, least):
 
 def hint(config, width):
     """The keys, and with a sung answer the asked flats' syllables (do re mi go without saying)."""
-    keys = f"keys 1-9 or {HOME_ROW}uy\nflat: the key twice or shifted"
-    flats = "  ".join(f"{d} {SYLLABLE[d]}" for d in degrees_of(config) if d.startswith("b"))
-    if config.get("answer") != "sung" or not flats:
-        return keys
-    return keys + "\nflats sung: " + flats
+    plain = flat_hint(degrees_of(config))
+    keys = GAP.join([KEYS, *([plain, f"natural {plain[0] * 2}"] if plain else ["flat 33 >"])])
+    flats = sung_hint(degrees_of(config))
+    return keys + ("\n" + flats if config.get("answer") == "sung" and flats else "")
 
 
 def status(current, n, typed, config, item=None):
@@ -551,5 +572,5 @@ def build_session(config, bank, rng=None):
         items.append(dict(idx=idx, truth=label, ask_s=t, window_end_s=window_end, meta=dict(degree=label, midi=midi)))
         t = nxt
     b.score.seconds = t + OUTRO_SECONDS
-    return b.score, items, keymap()
+    return b.score, items, keymap(degrees_of(config))
 
