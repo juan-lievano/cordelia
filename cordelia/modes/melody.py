@@ -56,7 +56,7 @@ SHAPES = dict(none="", slabs="▁🭻🭺🭹🭸🭷🭶▔", braille="⣀⠤�
 
 # A question, in beats: the melody, then two clicks and the melody again
 # for each further hearing, a bar of clicks to think, the answer sung a
-# note a beat, and a beat of rest.
+# note a beat (or spoken a degree a beat, then the melody once more), and a beat of rest.
 CLICK_BEATS = 2                # between hearings; since 2026-11-08, 4 before
 ANSWER_CLICK_BEATS = 4         # between the last hearing and the answer
 REST_BEATS = 1                 # after the answer; 2 until 2026-11-14
@@ -198,13 +198,14 @@ class Builder:
     def sing(self, t, midis):
         """The answer, a note a beat on its own pitch; each sung note's vowel
         lands on the beat and holds a little under the next. A melody with a note nobody
-        can sing is spoken instead, a degree a beat. Returns next_t."""
+        can sing is spoken instead, a degree a beat, and then played once more (since
+        2026-11-16: the words have no pitch to check the answer against). Returns next_t."""
         who = singers(self.config, midis)
         if who is None:
             for m in midis:
                 self.score.clips.append(Clip(t, f"spoken/{label(self.config, m)}"))
                 t += self.beat
-            return t
+            return self.melody(t, midis)
         for i, (m, singer) in enumerate(zip(midis, who)):
             clip = self.sung(m, singer)
             lead = self.bank.lead(clip)
@@ -238,9 +239,11 @@ class Builder:
             t += held * self.beat
         return t + CADENCE_REST_BEATS * self.beat
 
-    def phrase_beats(self, notes):
-        hearings = self.config["hearings"]
-        return hearings * notes + (hearings - 1) * CLICK_BEATS + ANSWER_CLICK_BEATS + notes + REST_BEATS
+    def phrase_beats(self, midis):
+        """How long the melody's question is: a spoken answer is the degrees, then the melody again."""
+        hearings, notes = self.config["hearings"], len(midis)
+        answer = notes if singers(self.config, midis) else 2 * notes
+        return hearings * notes + (hearings - 1) * CLICK_BEATS + ANSWER_CLICK_BEATS + answer + REST_BEATS
 
 
 def next_note(rng, config, among, last):
@@ -368,9 +371,11 @@ def build_session(config, bank, rng=None):
     b = Builder(config, bank)
     limit = config["minutes"] * 60
     t = b.cadence(INTRO_BEATS * b.beat)
-    count = max(1, int((limit - t) // (b.phrase_beats(config["length"]) * b.beat)))
+    count = max(1, int((limit - t) // ((b.phrase_beats([]) + (config["hearings"] + 1) * config["length"]) * b.beat)))   # were all of them sung
     items = []
     for idx, midis in enumerate(draw(rng, config, count)):
+        if items and t + b.phrase_beats(midis) * b.beat > limit + 1e-6:      # the spoken ones are longer
+            break
         window_end, nxt = b.phrase(t, midis)
         degrees = [label(config, m) for m in midis]
         items.append(dict(idx=idx, truth=" ".join(degrees), ask_s=t, window_end_s=window_end,
