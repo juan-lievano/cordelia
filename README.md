@@ -73,6 +73,10 @@ beats 6-7   the note again
 beat  8     rest
 ```
 
+The word is as long at any tempo: it gets the beats it lasts, less 0.3 s that its end may
+run under the note again (since 2026-11-16), so it is one beat up to 110 BPM and 100 BPM
+asks twice what 50 does; faster, a "flat" word takes two.
+
 Each session draws its key from the `--key` list (all twelve until one is
 given), never the one the last session was in. The session asks the degrees listed on the command line,
 any of `1 b2 2 b3 3 4 b5 5 b6 6 b7 7` (`major`, `minor` and `all` expand

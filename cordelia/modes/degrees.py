@@ -92,6 +92,10 @@ NOTE_BEATS = 2
 PAUSE_BEATS = 2
 AGAIN_BEATS = 2
 REST_BEATS = 1
+# The spoken word is as long at any tempo, and gets the beats it lasts; its end may be under
+# the note that follows by this much, so that "flat seven" (0.8 s) is still one beat at 100 BPM
+# and a quick session is not slowed by it. Since 2026-11-16; none before.
+SPOKEN_OVER = 0.3
 INTRO_BEATS = 1                # the drone's fade-in, then the cadence, then the questions
 CADENCE = (("1", 0), ("5", 0), ("1", 1))   # (degree, octave): tonic, fifth, tonic an octave up
 CADENCE_BEATS = 1              # each cadence note
@@ -411,8 +415,10 @@ class Builder:
     def midi(self, label, octave):
         return self.tonic + SEMITONES[label] + 12 * octave
 
-    def answer_beats(self, clip):
-        return max(1, math.ceil(self.bank.seconds(clip) / self.beat))
+    def answer_beats(self, clip, over=0.0):
+        """The beats the voice gets: what the clip lasts, less the `over` seconds its end may
+        run into what follows."""
+        return max(1, math.ceil((self.bank.seconds(clip) - over) / self.beat))
 
     def octave(self, midi):
         """The octave a note is in, counted from the middle-register tonic's (0), and
@@ -430,7 +436,7 @@ class Builder:
             self.score.clips.append(Clip(voice_t, clip, SUNG_LEVEL))
             return voice_t, voice_t + self.answer_beats(clip) * beat   # no rest: the sung note's fade is the gap
         self.score.clips.append(Clip(voice_t, label))
-        voice_beats = self.answer_beats(label)
+        voice_beats = self.answer_beats(label, SPOKEN_OVER)
         again = voice_t + voice_beats * beat
         self.score.notes.append(Note(again, AGAIN_BEATS * beat + RING, midi, level, voice=voice))
         return voice_t, again + (AGAIN_BEATS + REST_BEATS) * beat
@@ -460,7 +466,7 @@ class Builder:
         if self.sung:
             longest = max(self.answer_beats(sung_label(d, m)) for d, m in in_range(self.config))
             return (NOTE_BEATS + PAUSE_BEATS + longest) * self.beat
-        longest = max(self.answer_beats(l) for l in degrees_of(self.config))
+        longest = max(self.answer_beats(l, SPOKEN_OVER) for l in degrees_of(self.config))
         return (NOTE_BEATS + PAUSE_BEATS + longest + AGAIN_BEATS + REST_BEATS) * self.beat
 
 
