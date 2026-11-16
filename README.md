@@ -169,7 +169,7 @@ whoever recorded each (jennifer's samples are C3 to B5, chengu's C2 to B4, of wh
 given G2 up: lower they are not pleasant), and a melody
 with a note under G2 or over B5, and every melody of a bass line (a range whose middle is under C3), is spoken instead, a degree a beat ("one, flat three"):
 since 2026-11-14, before which a note up to six semitones past a singer's range was still
-sung. The sung clips are made once per
+sung. `--answer spoken` has every melody spoken (since 2026-11-15; `sung` is the usual). The sung clips are made once per
 note under `data/voices/sung-<singer>/`.
 
 The recipe is given on the command line, as in the degrees mode: the

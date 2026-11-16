@@ -44,6 +44,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--bpm 60`                 | tempo (last; 55)                                |
 |                | &nbsp;&nbsp;`--minutes 5`              | length (last; 5)                                |
 |                | &nbsp;&nbsp;`--key G`                  | keys to draw from, not the last (last; all)     |
+|                | &nbsp;&nbsp;`--answer spoken`          | degrees said, a beat each; `sung` (last; sung)  |
 |                | &nbsp;&nbsp;`--singer chengu`          | or `jennifer`; the other sings what's out of reach |
 |                | &nbsp;&nbsp;`--shape slabs`            | each note's height under the sung melody; or `braille`, `none` (last; none) |
 |                | &nbsp;exercise | list + range + length + spread + hearings |

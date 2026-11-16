@@ -59,6 +59,8 @@ def main(argv=None):
     m.add_argument("--minutes", type=float)
     m.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     m.add_argument("--bpm", type=float)
+    m.add_argument("--answer", help="sung: the melody sung back on its own pitches; spoken: its degrees said, a beat each "
+                                    "(as a melody nobody can sing always is)")
     m.add_argument("--singer", help=" | ".join(SINGERS) + ": who sings whatever they have samples near; the other sings the rest")
     m.add_argument("--shape", help=" | ".join(melody.SHAPES) + ": under the sung melody, a mark under each note as high as "
                                    "the note is above the melody's lowest (slabs: 8 heights a row, in terminals that "

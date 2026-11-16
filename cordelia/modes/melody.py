@@ -21,7 +21,7 @@ import random
 from ..score import Clip, Note, Score
 from ..staff import spell
 from ..voice import MAX_SHIFT, SINGERS, SYLLABLE, Choir, sampled, shift, sung_label
-from .degrees import (FLAT_ROW, HOME_ROW, NOTE_NAMES, RANGES, SEMITONES, SPOKEN, bass, check_range, draw_key, in_range, key_pool,
+from .degrees import (ANSWERS, FLAT_ROW, HOME_ROW, NOTE_NAMES, RANGES, SEMITONES, SPOKEN, bass, check_range, draw_key, in_range, key_pool,
                       key_text, parse_degrees, parse_key, parse_range, range_name, range_words, short, span_text, tonic_midi)
 
 NAME = "melody"
@@ -46,7 +46,7 @@ RANGE = RANGES["narrow"]       # what a melody session had before there were ran
 # first note is uniform);
 # hearings: how many times a melody is played before the answer.
 DEFAULTS = dict(minutes=5.0, key_pool=["all"], bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, spread=0.2,
-                hearings=3, singer="jennifer", shape="none")
+                hearings=3, singer="jennifer", shape="none", answer="sung")
 
 # --shape: under the sung melody, a mark under each note as high as the note is above the
 # melody's lowest, a level per scale step; the levels a character has, low to high. A row of
@@ -113,7 +113,7 @@ def able(config, midi):
     and a note up to six semitones past a singer's range was still sung. Nobody on a bass
     line (since 2026-11-14, later that day): its answers are all spoken, where before those
     of its melodies that stayed at G2 or over were sung, and it was silly to have only some."""
-    if bass(config):
+    if bass(config) or config.get("answer") == "spoken":      # --answer spoken, since 2026-11-15
         return []
     return [s for s in near(config, midi) if sampled(s, midi)]
 
@@ -164,7 +164,7 @@ def settings(config):
              ("step", "any move" if config["step"] is None else f"{config['step']:g}"))
     return [("key", key_text(config)), ("degrees", " ".join(config["degrees"])), ("range", span_text(config)),
             ("length", f"{config['length']} notes"), moves, ("hearings", f"{config['hearings']}"),
-            ("bpm", f"{config['bpm']:g}"), ("singer", config.get("singer", "jennifer"))]
+            ("bpm", f"{config['bpm']:g}"), ("answer", config.get("answer", "sung")), ("singer", config.get("singer", "jennifer"))]
 
 
 class Builder:
@@ -298,11 +298,13 @@ def configure(a, last_config, rng):
         raise SystemExit("--spread is 0 (steps only) to 1 (any other degree, equally)")
     if a.minutes <= 0:
         raise SystemExit("--minutes must be positive")
+    if a.answer not in ANSWERS:
+        raise SystemExit(f"--answer is {' or '.join(ANSWERS)}")
     if a.shape not in SHAPES:
         raise SystemExit(f"--shape is {', '.join(SHAPES)}")
     config = dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=bpm, degrees=list(degrees),
                   range=parse_range(range_words(a, last_config, RANGE)),
-                  length=length, spread=spread, hearings=hearings, singer=a.singer, shape=a.shape, keys=length)
+                  length=length, spread=spread, hearings=hearings, singer=a.singer, shape=a.shape, answer=a.answer, keys=length)
     if a.singer not in SINGERS:
         raise SystemExit(f"singer {a.singer!r}: choose from {', '.join(SINGERS)}")
     check_range(config, 2)      # two notes to move between
