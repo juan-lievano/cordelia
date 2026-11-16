@@ -30,7 +30,7 @@ python3 -m cordelia degrees --midi t.mid           # also write the score as MID
 python3 -m cordelia chords --ambient --minutes 60   # any mode: the same audio, no keys read, nothing recorded
 python3 -m cordelia melody                         # the last melody session's settings (at first: 5 min, four notes on 1 to 5, mostly stepwise, 55 BPM), sung back
 python3 -m cordelia melody 1 2 b3 4 5 --length 3 --spread 0.5 --key G --singer chengu
-python3 -m cordelia melody minor --range low       # = E1 0 12, a bass line: the tonic (E1 to Eb2) up to its octave (middle = G3 0 12, high = G4 0 12)
+python3 -m cordelia melody minor --range low       # = E1 0 12, a bass line: the tonic (E1 to Eb2) up to its octave (high = G4 0 12)
 python3 -m cordelia melody minor --range E1 0 19   # the same, up to the fifth over the octave
 python3 -m cordelia chords                         # the last chords session's settings (at first: 4 min, 50 BPM, level 1)
 python3 -m cordelia chords 2                       # the sevenths; 3: all ten, open voicing; 4-6: the same without the arpeggio first
@@ -84,13 +84,15 @@ whatever the list, so a ♭3 answered in a major session is recorded as ♭3.
 from the fifth under it to the fourth over its octave), and every note in between that is a
 degree of the list is asked, so the range moves with the key. A note before the two numbers
 is the lowest the tonic may be (`--range E1 0 12`: the tonic, E1 to Eb2, up to its octave);
-without one the tonic is the middle-register one, G3 to F#4. `low`, `middle`, `high` and `wide`
-stand for E1 0 12, G3 0 12, G4 0 12 and G3 5 17 while typing, as `minor` does for a list, and only the
-note and the numbers are stored. A range other than G3 5 17 is an exercise of its own in the
+without one the tonic is the middle-register one, G3 to F#4. Five words stand for a range while typing, as `minor` does for a list, and only the note
+and the numbers are stored: `narrow` (G3 0 11) is the list once, the tonic up to the seventh;
+`middle` (G3 5 17) the fifth under the tonic to the fourth over its octave; `wide` (G3 12 24)
+three octaves, the one under the tonic and the two over it; `low` (E1 0 12) and `high`
+(G4 0 12) the tonic to its octave, in the bass and an octave over the middle. A range other than G3 5 17 is an exercise of its own in the
 stats. One that sits under C3 is played in the bass voice, the drone an octave up; a sung
 answer needs a range the singer has (C3 to B5). Since 2026-11-14: before, every session was
-G3 5 17, which is still where a session with no range since starts. Every question is equally
-likely except degree 1, asked half as often; nothing is avoided but the exact
+`middle`, which is still where a session with no range since starts. Every degree is equally
+likely except degree 1, asked half as often, whichever of its notes in the range (before 2026-11-15 ♭5, with one note in the middle range, came half as often too); nothing is avoided but the exact
 same question twice in a row. Esc stops;
 everything before it is kept.
 
@@ -177,7 +179,7 @@ many notes, `--spread` for how far a move tends to go (to any other note,
 one d positions away weighing spread^(d-1): 0 is steps only, 1 any other
 note equally; the first note is uniform), and `--hearings` for
 how many times a melody is played before the answer. A melody is drawn from every note of
-the list within the range (at first `middle`: the tonic, G3 to F#4, up to its octave). A
+the list within the range (at first `narrow`: the tonic, G3 to F#4, up to the seventh), its first note any degree equally. A
 range that sits under C3 (`low`: the tonic, E1 to Eb2, up to its octave) is a bass line:
 played with a fuller tone, the drone an octave up, and its answers spoken. Since 2026-11-14:
 before, `--octaves` (1, 2 or 3) and `--register` (low, middle, high) put the list that many
@@ -185,7 +187,7 @@ times over up from a tonic, and `8` in the list put the tonic on top. An
 answer is the degrees in any octave, and the melody is shown that way once
 sung (`1 7 5 6 1 6`), with `--shape slabs` or `--shape braille` a mark under
 each note as high as the note is above the melody's lowest (a level per scale step, 8 or 4 to
-a row; `none` turns it off). The five together, the range only when it is not the middle, are the exercise the stats group
+a row; `none` turns it off). The five together, the range only when it is not `narrow`, are the exercise the stats group
 by, so `cordelia melody 1 2 b3 4 5` is a new exercise the first time it is
 typed, and so is `--length 5` or `--hearings 2` on a list already played. The two numbered
 levels of 2026-11-03 to 11-05 were rewritten into recipes (level 2 is the

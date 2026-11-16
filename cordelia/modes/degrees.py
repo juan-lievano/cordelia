@@ -45,7 +45,11 @@ SHORTHANDS = {
     "all": tuple(SEMITONES),
 }
 
-# Degree 1 is the easy one, so it turns up half as often as any other.
+# Degree 1 is the easy one, so it turns up half as often as any other; a degree's weight is
+# shared out evenly over its notes in the range, so one that is there more times over (the
+# tonic at both ends of an octave) is asked no more often for it. Since 2026-11-15: before,
+# the weight was each note's, which made no difference but to b5, the one degree with a
+# single note in the range there was (the middle), and so asked half as often as the others.
 WEIGHT = {"1": 1}
 DEFAULT_WEIGHT = 2
 # `cordelia focus` asks each degree of the list in proportion to its trouble over the latest
@@ -71,8 +75,13 @@ BY = ("recall", "thompson")
 # it; the melody mode had --octaves and --register; those sessions have no `range`. (For a
 # few hours of that day a range was two fixed notes whatever the key, `["E1", "E2"]`.)
 TONIC = "G3"
-RANGES = {"low": ("E1", 0, 12), "middle": (TONIC, 0, 12), "high": ("G4", 0, 12), "wide": (TONIC, 5, 17)}
-RANGE = RANGES["wide"]         # degrees' when none was ever given: the fifth under the tonic to the fourth over its octave
+# narrow: the list once, the tonic up to the seventh. middle: what the degrees mode always
+# did, the fifth under the tonic to the fourth over its octave. wide: three octaves, the one
+# under the tonic and the two over it. low and high: the tonic to its octave, in the bass and
+# an octave over the middle. (On 2026-11-14 `middle` was G3 0 12 and `wide` G3 5 17; what is
+# stored is the note and the numbers, so those sessions say what they were.)
+RANGES = {"narrow": (TONIC, 0, 11), "middle": (TONIC, 5, 17), "wide": (TONIC, 12, 24), "low": ("E1", 0, 12), "high": ("G4", 0, 12)}
+RANGE = RANGES["middle"]       # degrees' when none was ever given
 LOWEST, HIGHEST = 28, 96       # E1, C7: lower and the pitch is hard to hear, higher and the tone is thin
 BASS_UNDER = 48                # a range whose middle (over the keys) is under C3 is a bass line: the bass voice,
                                # and the drone an octave up, out of its way
@@ -430,12 +439,12 @@ class Builder:
 
 def pool(config, shares=None):
     """((label, midi), weight) for every question the session can ask: the notes of its range;
-    with `shares` (degree -> its part of the questions) a degree's share split evenly over its
-    notes. (Before 2026-11-14 a question was (label, octave); see RANGES.)"""
+    a degree's WEIGHT, or with `shares` (degree -> its part of the questions) its share, split
+    evenly over its notes. (Before 2026-11-14 a question was (label, octave); see RANGES.)"""
     qs = in_range(config)
-    if shares is None:
-        return [(q, WEIGHT.get(q[0], DEFAULT_WEIGHT)) for q in qs]
     notes = {d: sum(1 for q in qs if q[0] == d) for d in config["degrees"]}
+    if shares is None:
+        shares = {d: WEIGHT.get(d, DEFAULT_WEIGHT) for d in config["degrees"]}
     return [(q, shares.get(q[0], 0) / notes[q[0]]) for q in qs]
 
 

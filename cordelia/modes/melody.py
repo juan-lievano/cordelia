@@ -37,7 +37,7 @@ LABEL = {semitones: d for d, semitones in SEMITONES.items()}
 # Since 2026-11-14. Before, the list ran up from a tonic `octaves` times over (1, 2 or 3; with
 # 8 in the list, the tonic on top of the last), that tonic the one putting the middle of the
 # octaves nearest the `register`'s centre; those sessions have no `range`.
-RANGE = RANGES["middle"]
+RANGE = RANGES["narrow"]       # what a melody session had before there were ranges, without an 8
 
 # degrees: what a melody may use; length: how many notes;
 # spread: how far a move tends to go, the weight of a move of d positions along the
@@ -137,7 +137,7 @@ def label(config, midi):
 
 def recipe(config, brief=False):
     """The exercise as words: the list (`brief`: by its scale's name), then the rest, the range
-    first unless it is the middle. Sessions before 2026-11-14 had a register and octaves instead
+    first unless it is RANGE. Sessions before 2026-11-14 had a register and octaves instead
     of a range; before 2026-11-08 `step`, the share of moves to a neighbour, the rest uniform
     with repeats; the first (2026-11-03) drew every move uniformly."""
     if "spread" in config:
@@ -253,8 +253,11 @@ def next_note(rng, config, among, last):
 def draw(rng, config, count):
     """`count` melodies for the config as MIDI notes, never the same one twice in a row."""
     out, previous, among = [], None, notes(config)
+    # the first note: every degree as likely, whichever of its notes (so not the tonic twice
+    # as often where the range has it at both ends; since 2026-11-15, any note equally before)
+    first = [1 / sum(1 for other in among if (other - m) % 12 == 0) for m in among]
     while len(out) < count:
-        melody = [rng.choice(among)]
+        melody = [rng.choices(among, first)[0]]
         while len(melody) < config["length"]:
             melody.append(next_note(rng, config, among, melody[-1]))
         if melody != previous:
