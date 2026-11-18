@@ -12,7 +12,7 @@ import tempfile
 import textwrap
 import time
 
-from . import history, journal, review, scorer, staff, stats, store
+from . import full, history, journal, review, scorer, staff, stats, store
 from .collector import collect
 from .modes import DRILLS, MODES, chords, degrees, melody
 from .synth import render
@@ -81,6 +81,7 @@ def main(argv=None):
     s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="the degrees drill, the sessions that asked exactly this list (none: the last list played); with --mode focus, focus sessions")
     s.add_argument("--key")
     s.add_argument("--tag")
+    s.add_argument("--full", action="store_true", help="the whole record: every drill in one table, then the degrees by mix-up, speed, key, register and hour, the melodies note by note, the chords, records")
 
     h = sub.add_parser("history", help="the settings a drill has been played with, and how long each")
     h.add_argument("mode", nargs="?", help=" | ".join(DRILLS) + " (default: the drill played last)")
@@ -111,6 +112,8 @@ def main(argv=None):
     if a.cmd == "focus":
         return cmd_session(degrees, a, focused=True)
     if a.cmd == "stats":
+        if a.full:
+            return full.report(store.connect(), a.key, a.tag)
         return stats.report(store.connect(), a.mode, a.degrees, a.key, a.tag)
     if a.cmd == "history":
         return history.show(store.connect(), a.mode)
