@@ -185,7 +185,7 @@ degrees a melody may use (any of the twelve, and the same shorthands),
 many notes, `--spread` for how far a move tends to go (to any other note,
 one d positions away weighing spread^(d-1): 0 is steps only, 1 any other
 note equally; the first note is uniform), and `--hearings` for
-how many times a melody is played before the answer. A melody is drawn from every note of
+how many times a melody is played before the answer, and `--think` for the beats of clicks before the answer (4, the only choice until 2026-11-18; not part of the exercise the stats group by). A melody is drawn from every note of
 the list within the range (at first `narrow`: the tonic, G3 to F#4, up to the seventh), its first note any degree equally. A
 range that sits under C3 (`low`: the tonic, E1 to Eb2, up to its octave) is a bass line:
 played with a fuller tone, the drone an octave up, and its answers spoken. Since 2026-11-14:

@@ -45,9 +45,10 @@ RANGE = RANGES["narrow"]       # what a melody session had before there were ran
 # notes (the list, octave after octave) being spread ** (d - 1), so 0 is steps only
 # and 1 is uniform over the other notes (never the same note twice running; the
 # first note is uniform);
-# hearings: how many times a melody is played before the answer.
+# hearings: how many times a melody is played before the answer;
+# think: the beats of clicks between the last hearing and the answer.
 DEFAULTS = dict(minutes=5.0, key_pool=["all"], bpm=55.0, degrees=("1", "2", "3", "4", "5"), length=4, spread=0.2,
-                hearings=3, singer="jennifer", shape="none", answer="sung")
+                hearings=3, think=4, singer="jennifer", shape="none", answer="sung")
 
 # --shape: under the sung melody, a mark under each note as high as the note is above the
 # melody's lowest, a level per scale step; the levels a character has, low to high. A row of
@@ -59,7 +60,7 @@ SHAPES = dict(none="", slabs="▁🭻🭺🭹🭸🭷🭶▔", braille="⣀⠤�
 # for each further hearing, a bar of clicks to think, the answer sung a
 # note a beat (or spoken a degree a beat, then the melody once more), and a beat of rest.
 CLICK_BEATS = 2                # between hearings; since 2026-11-08, 4 before
-ANSWER_CLICK_BEATS = 4         # between the last hearing and the answer
+ANSWER_CLICK_BEATS = DEFAULTS["think"]   # between the last hearing and the answer, unless --think says (since 2026-11-18)
 REST_BEATS = 1                 # after the answer; 2 until 2026-11-14
 INTRO_BEATS = 1                # the drone's fade-in, then the cadence, then the questions
 CADENCE_REST_BEATS = 2         # after the cadence, before the first question
@@ -157,8 +158,13 @@ def settings(config):
     moves = (("spread", f"{config['spread']:g}") if "spread" in config else
              ("step", "any move" if config["step"] is None else f"{config['step']:g}"))
     return [("key", key_text(config)), ("degrees", " ".join(config["degrees"])), ("range", span_text(config)),
-            ("length", f"{config['length']} notes"), moves, ("hearings", f"{config['hearings']}"),
+            ("length", f"{config['length']} notes"), moves, ("hearings", f"{config['hearings']}"), ("think", f"{think(config)} beats"),
             ("bpm", f"{config['bpm']:g}"), ("answer", config.get("answer", "sung")), ("singer", config.get("singer", "jennifer"))]
+
+
+def think(config):
+    """The beats of clicks before the answer; sessions before 2026-11-18 had no setting for it."""
+    return config.get("think", ANSWER_CLICK_BEATS)
 
 
 class Builder:
@@ -215,7 +221,7 @@ class Builder:
             if i:
                 t = self.clicks(t)
             t = self.melody(t, midis)
-        t = self.clicks(t, ANSWER_CLICK_BEATS)
+        t = self.clicks(t, think(self.config))
         window_end = t
         t = self.sing(t, midis)
         return window_end, t + REST_BEATS * self.beat
@@ -237,7 +243,7 @@ class Builder:
         """How long the melody's question is: a spoken answer is the degrees, then the melody again."""
         hearings, notes = self.config["hearings"], len(midis)
         answer = notes if singers(self.config, midis) else 2 * notes
-        return hearings * notes + (hearings - 1) * CLICK_BEATS + ANSWER_CLICK_BEATS + answer + REST_BEATS
+        return hearings * notes + (hearings - 1) * CLICK_BEATS + think(self.config) + answer + REST_BEATS
 
 
 def next_note(rng, config, among, last):
@@ -291,6 +297,8 @@ def configure(a, last_config, rng):
         raise SystemExit("--length must be at least 1")
     if hearings < 1:
         raise SystemExit("--hearings must be at least 1")
+    if a.think < 0:
+        raise SystemExit("--think is 0 beats or more")
     if not 0 <= spread <= 1:
         raise SystemExit("--spread is 0 (steps only) to 1 (any other degree, equally)")
     if a.minutes <= 0:
@@ -301,7 +309,7 @@ def configure(a, last_config, rng):
         raise SystemExit(f"--shape is {', '.join(SHAPES)}")
     config = dict(minutes=a.minutes, key=draw_key(pool, rng, last_config), key_pool=pool, bpm=bpm, degrees=list(degrees),
                   range=parse_range(range_words(a, last_config, RANGE)),
-                  length=length, spread=spread, hearings=hearings, singer=a.singer, shape=a.shape, answer=a.answer, keys=length)
+                  length=length, spread=spread, hearings=hearings, think=a.think, singer=a.singer, shape=a.shape, answer=a.answer, keys=length)
     if a.singer not in SINGERS:
         raise SystemExit(f"singer {a.singer!r}: choose from {', '.join(SINGERS)}")
     check_range(config, 2)      # two notes to move between

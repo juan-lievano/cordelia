@@ -56,6 +56,7 @@ def main(argv=None):
                    help="how far a move tends to go: a move of d positions along the notes weighs spread^(d-1), "
                         "so 0 is steps only, 1 any other note equally, 0.2 mostly steps with the odd third")
     m.add_argument("--hearings", type=int, help="times a melody is played before the answer")
+    m.add_argument("--think", type=int, metavar="BEATS", help="beats of clicks between the last hearing and the answer")
     m.add_argument("--minutes", type=float)
     m.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     m.add_argument("--bpm", type=float)

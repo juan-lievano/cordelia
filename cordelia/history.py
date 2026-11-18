@@ -8,7 +8,7 @@ keymap, the commit) are left out, and a setting that never changed goes in the t
 import json
 from datetime import datetime
 
-from .modes import DRILLS
+from .modes import DRILLS, melody
 from .modes.degrees import degrees_of, range_name, short
 from .stats import box, centred, table
 
@@ -29,7 +29,7 @@ SETTINGS = {
     "melody": [("degrees", lambda c: short(c["degrees"]) if c.get("degrees") else ""),
                ("range", lambda c: range_name(c) or f"{c.get('register', 'middle')}, {c.get('octaves', 1)} oct"),
                ("length", lambda c: str(c.get("length", ""))), ("spread", lambda c: f"{c['spread']:g}" if "spread" in c else ""),
-               ("hearings", lambda c: str(c.get("hearings", ""))), BPM, MINUTES, ("answer", lambda c: c.get("answer", "sung")), ("singer", lambda c: c.get("singer", "")), KEYS],
+               ("hearings", lambda c: str(c.get("hearings", ""))), ("think", lambda c: str(melody.think(c))), BPM, MINUTES, ("answer", lambda c: c.get("answer", "sung")), ("singer", lambda c: c.get("singer", "")), KEYS],
     "chords": [("level", lambda c: str(c.get("level", ""))), BPM, MINUTES, ("voice", lambda c: c.get("voice", ""))],
 }
 

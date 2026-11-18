@@ -42,6 +42,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--length 3`               | notes (last; 4)                                 |
 |                | &nbsp;&nbsp;`--spread 0.5`             | 0 steps only, 1 anywhere (last; 0.2)            |
 |                | &nbsp;&nbsp;`--hearings 2`             | plays before the answer (last; 3)               |
+|                | &nbsp;&nbsp;`--think 2`                | beats of clicks before the answer (last; 4)     |
 |                | &nbsp;&nbsp;`--bpm 60`                 | tempo (last; 55)                                |
 |                | &nbsp;&nbsp;`--minutes 5`              | length (last; 5)                                |
 |                | &nbsp;&nbsp;`--key G`                  | keys to draw from, not the last (last; all)     |
