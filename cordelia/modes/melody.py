@@ -247,6 +247,13 @@ class Builder:
         return hearings * notes + (hearings - 1) * CLICK_BEATS + think(self.config) + answer + REST_BEATS
 
 
+# To do (noted 2026-11-20): a second way of drawing the next note, nearer how tunes move, to choose beside this one.
+# What `spread` cannot do at any value: the same note again (about a fifth of a tune's moves; never dealt here);
+# fourths, fifths and octaves more often than a steady falloff gives, sixths and sevenths less; after a leap, a
+# step back the other way (this draw has no memory of the move before). Of a tune's moves that change note about
+# 60-70 % are steps, 15-20 % thirds, 10 % fourths and fifths, a few % wider: a spread of 0.3 to 0.4 by the steps
+# alone. Those shares are from memory of folk-song and classical counts: check them against a corpus first.
+# A run's count in `stats --full` (full.possible) leaves out a note twice in a row, and would have to let it in.
 def next_note(rng, config, among, last):
     """Any other note, weighted spread ** (positions away - 1)."""
     i = among.index(last)
