@@ -2,7 +2,8 @@
 table, then what holds across them. For the single degrees (the degrees and
 focus drills pooled): each degree and what it is mistaken for, the pairs mixed
 up most, and right% by how long the answer took, by key, by register, by the
-leap from the note before, by hour. Then the melodies note by note, the chord
+leap from the note before, by hour. Then the melodies note by note, every run of
+three notes inside them as a dot (times heard against right%), the chord
 qualities, and records.
 
 A box is (title, body, note). They are packed into as few rows as the
@@ -357,6 +358,51 @@ def melody_box(rows):
             "ups and downs right = every move in the right direction · right shape, wrong place = the same moves, started on another degree")
 
 
+CLOUD = (64, 4)       # the fragment cloud: characters across, and lines between two labels of its scale (0, 25 ... 100 %)
+RUN = 3               # notes in a fragment
+DOTS = (0x01, 0x02, 0x04, 0x40, 0x08, 0x10, 0x20, 0x80)     # a braille character's dots, left column then right, top down
+
+
+def fragments_box(rows):
+    """Every run of three notes inside a melody as a dot: across, how many times it has been heard (each doubling
+    the same step); up, how often all three were answered right. A run heard n times is set at random between n
+    and n + 1, so the ones heard once or twice fill a band rather than stack in a line."""
+    import math
+    import random
+    heard, right_ = Counter(), Counter()
+    for r in rows:
+        if r["answer"] is None:
+            continue
+        truth, answer = r["truth"].split(), r["answer"].split()
+        ok = [i < len(answer) and answer[i] == t for i, t in enumerate(truth)]     # note for note; a note not given is wrong
+        for i in range(len(truth) - RUN + 1):
+            run = " ".join(truth[i:i + RUN])
+            heard[run] += 1
+            right_[run] += all(ok[i:i + RUN])
+    if len(heard) < 50:
+        return None
+    across, apart = CLOUD
+    down = 4 * apart + 1                             # a line for 100 %, then `apart` lines to each label below it
+    span = math.log2(max(heard.values()) + 1)
+    at = lambda n: math.log2(n) / span                # where a count sits, 0 at the left edge to 1
+    lit = set()
+    for run, n in heard.items():
+        x = int(at(n + random.Random(run).random()) * across * 2)
+        lit.add((min(x, across * 2 - 1), round((1 - right_[run] / n) * 4 * apart * 4 + 1.5)))      # a labelled share is the middle of its line
+    labels = {k * apart: 100 - 25 * k for k in range(5)}
+    lines = []
+    for r in range(down):
+        cells = (sum(DOTS[dx * 4 + dy] for dx in (0, 1) for dy in range(4) if (2 * c + dx, 4 * r + dy) in lit) for c in range(across))
+        lines.append((f"{labels[r]:>4} │" if r in labels else "     │") + "".join(chr(0x2800 + b) if b else " " for b in cells))
+    ticks = [" "] * (across + 4)
+    n = 1
+    while n <= max(heard.values()):
+        ticks[int(at(n) * across): int(at(n) * across) + len(str(n))] = str(n)
+        n *= 2
+    lines += ["     └" + "─" * across, "      " + "".join(ticks).rstrip()]
+    return (f"melodies · {len(heard)} runs of {RUN} notes · times heard against % right", "\n".join(lines))
+
+
 def chords_box(rows):
     if len(rows) < MIN_ROW:
         return None
@@ -432,5 +478,6 @@ def report(con, key=None, tag=None):
                    "the degrees and focus drills together · s = the median seconds to a right answer · taken for = the wrong answer given most"),
                   matrix_box(single, f"degrees · every question, {len(single)}"), mixups(single, "degrees"), speed_box(single), keys_box(single), register_box(single), leaps_box(single), hours_box(single)]
     chords = [r for r in rows if r["mode"] == "chords"]
-    parts += [melody_box([r for r in rows if r["mode"] == "melody"]), chords_box(chords), matrix_box(chords, f"chords · every question, {len(chords)}")]
+    melodies = [r for r in rows if r["mode"] == "melody"]
+    parts += [melody_box(melodies), fragments_box(melodies), chords_box(chords), matrix_box(chords, f"chords · every question, {len(chords)}")]
     print("\n" + soft(grid([p for p in parts if p])) + "\n")

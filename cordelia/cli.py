@@ -82,7 +82,7 @@ def main(argv=None):
     s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="the degrees drill, the sessions that asked exactly this list (none: the last list played); with --mode focus, focus sessions")
     s.add_argument("--key")
     s.add_argument("--tag")
-    s.add_argument("--full", action="store_true", help="the whole record: every drill in one table, then the degrees by mix-up, speed, key, register and hour, the melodies note by note, the chords, records")
+    s.add_argument("--full", action="store_true", help="the whole record: every drill in one table, then the degrees by mix-up, speed, key, register and hour, the melodies note by note and by runs of three notes, the chords, records")
 
     h = sub.add_parser("history", help="the settings a drill has been played with, and how long each")
     h.add_argument("mode", nargs="?", help=" | ".join(DRILLS) + " (default: the drill played last)")

@@ -40,7 +40,8 @@ python3 -m cordelia stats                          # the last exercise played: h
 python3 -m cordelia stats --degrees minor --tag headphones
 python3 -m cordelia stats --mode melody            # the last melody session's recipe
 python3 -m cordelia stats --full                   # the whole record: every drill in one table, the degrees by mix-up,
-                                                   # speed, key, register, the note before and hour, melodies, chords, records
+                                                   # speed, key, register, the note before and hour, melodies (note by note, and every
+                                                   # run of three notes as a dot: times heard against right%), chords, records
 python3 -m cordelia history degrees                # every combination of settings played, its sessions, minutes, right%, last played
 python3 -m cordelia journal                        # minutes practised, a cell per day, a column per week
 python3 -m cordelia rescore                        # rebuild answers from the raw presses
