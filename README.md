@@ -314,6 +314,27 @@ directory of `<label>.wav` under `data/voices/<name>/`, so a sung or
 sampled voice can replace the spoken one.
 
 
+### To do
+
+**A melody generator that moves as tunes do** (noted 2026-11-20). A new
+generator of its own, to choose beside today's, not a setting of it. Today's
+draws each next note by `--spread` alone: any other note, each scale note
+further away `spread` times as likely. What tunes do that no spread gives:
+
+- the same note again, about a fifth of a tune's moves (never dealt today);
+- fourths, fifths and octaves more often than a steady falloff, sixths and
+  sevenths less;
+- after a leap, a step back the other way (today's draw has no memory of the
+  move before).
+
+Of a tune's moves that change note, about 60-70 % are steps, 15-20 % thirds,
+10 % fourths and fifths, a few % wider; by the steps alone that is a spread
+of 0.3 to 0.4. Those shares are from memory of folk-song and classical
+counts, not checked: measure them on a corpus first. The runs counted in
+`stats --full` leave out a note twice in a row (`full.possible`) and would
+have to let it in; sessions of the two generators should not be pooled.
+
+
 ### Samples, data, lineage
 
 `solfege_samples/` (not in the repo) holds the note folders of
