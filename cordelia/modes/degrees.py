@@ -5,7 +5,8 @@ the key is set in the ear before anything is asked. Each question: the note soun
 answer in, then the voice says the degree, the note sounds again, and a
 beat of rest. With `--answer sung` the voice and the note again are one
 thing instead: the degree's solfege syllable sung on the question's pitch,
-and no rest after it. The right answer is always given, nothing is ever judged out
+and no rest after it. With `--answer visual` (since 2026-11-20) no voice: the
+answer is written on the screen as the note sounds again. The right answer is always given, nothing is ever judged out
 loud, and the register varies so that the degree, not the pitch, is what
 is being asked: every note of the list within the session's range around the
 tonic (`--range`) can come up.
@@ -112,7 +113,7 @@ RING = 0.25                    # a note rings this long past its beats
 
 # no `range` here: a session without one in the last config gets RANGE (see range_words)
 DEFAULTS = dict(minutes=4.0, key_pool=["all"], bpm=50.0, degrees=SHORTHANDS["major"], voice="default", answer="spoken")
-ANSWERS = ("spoken", "sung")   # the word then the note again, or the syllable sung on the note
+ANSWERS = ("spoken", "sung", "visual")   # the word then the note again, the syllable sung on the note, or the note again and no voice (the answer is on the screen)
 SINGER = "jennifer"            # the sung answer's voice, the melody mode's default singer
 SUNG_LEVEL = 1.3               # as loud as the melody mode's sung answers
 MIN_BPM, MAX_BPM = 20, 240
@@ -347,7 +348,7 @@ def settings(config):
     return [("key", key_text(config)), ("degrees", " ".join(degrees_of(config))), ("range", span_text(config)),
             *([("focus", focus_text(config["focus"]))] if config.get("focus") else []),
             ("bpm", f"{config['bpm']:g}"), ("answer", config.get("answer", "spoken")),
-            ("voice", SINGER if config.get("answer") == "sung" else config.get("voice", "default"))]
+            ("voice", SINGER if config.get("answer") == "sung" else "none" if config.get("answer") == "visual" else config.get("voice", "default"))]
 
 
 def bank(config, data_dir):
@@ -357,7 +358,8 @@ def bank(config, data_dir):
         b.ensure([sung_label(d, m) for d, m in in_range(config)])
         return b
     b = VoiceBank(config.get("voice", "default"), data_dir)
-    b.ensure(spoken(degrees_of(config)))
+    if config.get("answer") != "visual":
+        b.ensure(spoken(degrees_of(config)))
     return b
 
 
@@ -435,8 +437,10 @@ class Builder:
             clip = sung_label(label, midi)
             self.score.clips.append(Clip(voice_t, clip, SUNG_LEVEL))
             return voice_t, voice_t + self.answer_beats(clip) * beat   # no rest: the sung note's fade is the gap
-        self.score.clips.append(Clip(voice_t, label))
-        voice_beats = self.answer_beats(label, SPOKEN_OVER)
+        voice_beats = 0
+        if self.config.get("answer") != "visual":
+            self.score.clips.append(Clip(voice_t, label))
+            voice_beats = self.answer_beats(label, SPOKEN_OVER)
         again = voice_t + voice_beats * beat
         self.score.notes.append(Note(again, AGAIN_BEATS * beat + RING, midi, level, voice=voice))
         return voice_t, again + (AGAIN_BEATS + REST_BEATS) * beat
@@ -466,7 +470,8 @@ class Builder:
         if self.sung:
             longest = max(self.answer_beats(sung_label(d, m)) for d, m in in_range(self.config))
             return (NOTE_BEATS + PAUSE_BEATS + longest) * self.beat
-        longest = max(self.answer_beats(l, SPOKEN_OVER) for l in degrees_of(self.config))
+        visual = self.config.get("answer") == "visual"
+        longest = 0 if visual else max(self.answer_beats(l, SPOKEN_OVER) for l in degrees_of(self.config))
         return (NOTE_BEATS + PAUSE_BEATS + longest + AGAIN_BEATS + REST_BEATS) * self.beat
 
 

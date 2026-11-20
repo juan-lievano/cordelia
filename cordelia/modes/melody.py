@@ -58,7 +58,7 @@ SHAPES = dict(none="", slabs="▁🭻🭺🭹🭸🭷🭶▔", braille="⣀⠤�
 
 # A question, in beats: the melody, then two clicks and the melody again
 # for each further hearing, a bar of clicks to think, the answer sung a
-# note a beat (or spoken a degree a beat, then the melody once more), and a beat of rest.
+# note a beat (or spoken a degree a beat, then the melody once more; or only the melody once more), and a beat of rest.
 CLICK_BEATS = 2                # between hearings; since 2026-11-08, 4 before
 ANSWER_CLICK_BEATS = DEFAULTS["think"]   # between the last hearing and the answer, unless --think says (since 2026-11-18)
 REST_BEATS = 1                 # after the answer; 2 until 2026-11-14
@@ -108,7 +108,7 @@ def able(config, midi):
     and a note up to six semitones past a singer's range was still sung. Nobody on a bass
     line (since 2026-11-14, later that day): its answers are all spoken, where before those
     of its melodies that stayed at G2 or over were sung, and it was silly to have only some."""
-    if bass(config) or config.get("answer") == "spoken":      # --answer spoken, since 2026-11-15
+    if bass(config) or config.get("answer") in ("spoken", "visual"):      # --answer spoken, since 2026-11-15; visual, since 2026-11-20
         return []
     return [s for s in near(config, midi) if sampled(s, midi)]
 
@@ -199,10 +199,11 @@ class Builder:
         """The answer, a note a beat on its own pitch; each sung note's vowel
         lands on the beat and holds a little under the next. A melody with a note nobody
         can sing is spoken instead, a degree a beat, and then played once more (since
-        2026-11-16: the words have no pitch to check the answer against). Returns next_t."""
+        2026-11-16: the words have no pitch to check the answer against). With --answer visual
+        no voice at all: the melody is played once more as its degrees show. Returns next_t."""
         who = singers(self.config, midis)
         if who is None:
-            for m in midis:
+            for m in [] if self.config.get("answer") == "visual" else midis:
                 self.score.clips.append(Clip(t, f"spoken/{label(self.config, m)}"))
                 t += self.beat
             return self.melody(t, midis)
@@ -242,7 +243,7 @@ class Builder:
     def phrase_beats(self, midis):
         """How long the melody's question is: a spoken answer is the degrees, then the melody again."""
         hearings, notes = self.config["hearings"], len(midis)
-        answer = notes if singers(self.config, midis) else 2 * notes
+        answer = notes if singers(self.config, midis) or self.config.get("answer") == "visual" else 2 * notes
         return hearings * notes + (hearings - 1) * CLICK_BEATS + think(self.config) + answer + REST_BEATS
 
 
@@ -284,7 +285,7 @@ def bank(config, data_dir):
     b = Choir(data_dir)
     b.ensure(sung_labels(config))
     among = notes(config)
-    if not all(able(config, m) for m in among):
+    if config.get("answer") != "visual" and not all(able(config, m) for m in among):
         b.spoken.ensure({d: SPOKEN[d] for d in {label(config, m) for m in among}})
     return b
 
@@ -382,7 +383,7 @@ def build_session(config, bank, rng=None):
         window_end, nxt = b.phrase(t, midis)
         degrees = [label(config, m) for m in midis]
         items.append(dict(idx=idx, truth=" ".join(degrees), ask_s=t, window_end_s=window_end,
-                          meta=dict(degrees=degrees, midis=midis, answer="sung" if singers(config, midis) else "spoken")))
+                          meta=dict(degrees=degrees, midis=midis, answer="sung" if singers(config, midis) else "visual" if config.get("answer") == "visual" else "spoken")))
         t = nxt
     b.score.seconds = t + OUTRO_SECONDS
     return b.score, items, keymap(config["degrees"])

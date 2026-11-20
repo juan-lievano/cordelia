@@ -17,7 +17,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | `--key D Eb E F F#`                    | keys to draw from, not the last (last; all)     |
 |                | `--bpm 40`                             | tempo (last; 50)                                |
 |                | `--voice Samantha`                     | any `say -v ?` voice (last; system)             |
-|                | `--answer sung`                        | syllable sung on the note; `spoken` (last; spoken) |
+|                | `--answer sung`                        | syllable sung on the note; `spoken`; `visual` = no voice, the note again (last; spoken) |
 |                | &nbsp;solfege | 1 do · 2 re · 3 mi · 4 fa · 5 so · 6 la · 7 ti |
 |                | &nbsp;flats | b2 ga · b3 nu · b5 jur · b6 ki · b7 pe         |
 |                | &nbsp;keys | `1`-`9` or `h , . n e i l u y`; 8 = 1, 9 = 2    |
@@ -46,7 +46,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--bpm 60`                 | tempo (last; 55)                                |
 |                | &nbsp;&nbsp;`--minutes 5`              | length (last; 5)                                |
 |                | &nbsp;&nbsp;`--key G`                  | keys to draw from, not the last (last; all)     |
-|                | &nbsp;&nbsp;`--answer spoken`          | degrees said, a beat each; `sung` (last; sung)  |
+|                | &nbsp;&nbsp;`--answer spoken`          | degrees said, a beat each; `sung`; `visual` = no voice, the melody again (last; sung) |
 |                | &nbsp;&nbsp;`--singer chengu`          | or `jennifer`; the other sings what's out of reach |
 |                | &nbsp;&nbsp;`--shape slabs`            | each note's height under the sung melody; or `braille`, `none` (last; none) |
 |                | &nbsp;exercise | list + range + length + spread + hearings |

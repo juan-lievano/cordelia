@@ -61,7 +61,7 @@ def main(argv=None):
     m.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     m.add_argument("--bpm", type=float)
     m.add_argument("--answer", help="sung: the melody sung back on its own pitches; spoken: its degrees said, a beat each, then the melody played once more "
-                                    "(as a melody nobody can sing always is)")
+                                    "(as a melody nobody can sing always is); visual: no voice, the melody played once more as its degrees show")
     m.add_argument("--singer", help=" | ".join(SINGERS) + ": who sings whatever they have samples near; the other sings the rest")
     m.add_argument("--shape", help=" | ".join(melody.SHAPES) + ": under the sung melody, a mark under each note as high as "
                                    "the note is above the melody's lowest (slabs: 8 heights a row, in terminals that "
@@ -82,7 +82,7 @@ def main(argv=None):
     s.add_argument("--degrees", nargs="*", metavar="DEGREE", help="the degrees drill, the sessions that asked exactly this list (none: the last list played); with --mode focus, focus sessions")
     s.add_argument("--key")
     s.add_argument("--tag")
-    s.add_argument("--full", action="store_true", help="the whole record: every drill in one table, then the degrees by mix-up, speed, key, register and hour, the melodies note by note and by runs of three notes, the chords, records")
+    s.add_argument("--full", action="store_true", help="the whole record: every drill in one table, then the degrees by mix-up, speed, key, register and hour, the melodies note by note, by the pairs of notes missed most and by runs of two and three notes, the chords, records")
 
     h = sub.add_parser("history", help="the settings a drill has been played with, and how long each")
     h.add_argument("mode", nargs="?", help=" | ".join(DRILLS) + " (default: the drill played last)")
@@ -159,7 +159,7 @@ def degree_flags(p):
     p.add_argument("--key", dest="key_pool", nargs="+", metavar="KEY", help=KEY_HELP)
     p.add_argument("--bpm", type=float)
     p.add_argument("--voice", help="a `say -v ?` voice; 'default' = system voice")
-    p.add_argument("--answer", help="spoken: the degree said, then the note again; sung: its syllable sung on the note")
+    p.add_argument("--answer", help="spoken: the degree said, then the note again; sung: its syllable sung on the note; visual: no voice, the note again as the degree shows")
 
 
 def last_config(con, mode, focused):

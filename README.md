@@ -40,8 +40,8 @@ python3 -m cordelia stats                          # the last exercise played: h
 python3 -m cordelia stats --degrees minor --tag headphones
 python3 -m cordelia stats --mode melody            # the last melody session's recipe
 python3 -m cordelia stats --full                   # the whole record: every drill in one table, the degrees by mix-up,
-                                                   # speed, key, register, the note before and hour, melodies (note by note, and every
-                                                   # run of three notes as a dot: times heard against right%), chords, records
+                                                   # speed, key, register, the note before and hour, melodies (note by note, the pairs of notes missed most, and every
+                                                   # run of two and of three notes as a dot: times heard against right%), chords, records
 python3 -m cordelia history degrees                # every combination of settings played, its sessions, minutes, right%, last played
 python3 -m cordelia journal                        # minutes practised, a cell per day, a column per week
 python3 -m cordelia rescore                        # rebuild answers from the raw presses
@@ -177,7 +177,7 @@ whoever recorded each (jennifer's samples are C3 to B5, chengu's C2 to B4, of wh
 given G2 up: lower they are not pleasant), and a melody
 with a note under G2 or over B5, and every melody of a bass line (a range whose middle is under C3), is spoken instead, a degree a beat ("one, flat three"):
 since 2026-11-14, before which a note up to six semitones past a singer's range was still
-sung. `--answer spoken` has every melody spoken (since 2026-11-15; `sung` is the usual). A spoken answer is followed by the melody played once more, a note a beat (since 2026-11-16), so the degrees just said can be heard on their pitches. The sung clips are made once per
+sung. `--answer spoken` has every melody spoken (since 2026-11-15; `sung` is the usual). A spoken answer is followed by the melody played once more, a note a beat (since 2026-11-16), so the degrees just said can be heard on their pitches. `--answer visual` (since 2026-11-20, in degrees too) has no voice: the answer is written on the screen while the melody, or the note, is played once more. The sung clips are made once per
 note under `data/voices/sung-<singer>/`.
 
 The recipe is given on the command line, as in the degrees mode: the

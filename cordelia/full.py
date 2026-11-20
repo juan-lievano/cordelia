@@ -2,8 +2,9 @@
 table, then what holds across them. For the single degrees (the degrees and
 focus drills pooled): each degree and what it is mistaken for, the pairs mixed
 up most, and right% by how long the answer took, by key, by register, by the
-leap from the note before, by hour. Then the melodies note by note, every run of
-three notes inside them as a dot (times heard against right%), the chord
+leap from the note before, by hour. Then the melodies note by note, the pairs of
+notes in a row missed most, every run of
+two and of three notes inside them as a dot (times heard against right%), the chord
 qualities, and records.
 
 A box is (title, body, note). They are packed into as few rows as the
@@ -109,10 +110,10 @@ def box_lines(title, body, note=None, width=None, height=None):
     return [top, *mid, "╰" + "─" * width + "╯"]
 
 
-def grid(parts, gap=1):
+def grid(parts, last=(), gap=1):
     """The boxes as one block. Widest first, each into the first row with room, gives the number of rows;
     of every way to fill that many or one more, the one with the fewest rows under two thirds full, then the fewest lines (tall boxes share a row), then the fullest emptiest row. A row keeps the order the
-    boxes were given in, and the rows the order of their first boxes."""
+    boxes were given in, and the rows the order of their first boxes. The boxes of `last` are a row of their own under the rest."""
     firsts_ = [box_lines(*p) for p in parts]
     natural = [len(b[0]) for b in firsts_]
     room = columns()
@@ -146,8 +147,8 @@ def grid(parts, gap=1):
             rows.append([i]); place(i + 1, rows); rows.pop()
     if len(parts) <= 16:
         place(0, [])
-    spec = [[parts[i] for i in sorted(r)] for r in sorted(best[1], key=min)]
-    total = max(used(r) for r in best[1])
+    spec = [[parts[i] for i in sorted(r)] for r in sorted(best[1], key=min)] + ([list(last)] if last else [])
+    total = max([used(r) for r in best[1]] + [sum(len(box_lines(*p)[0]) for p in last) + gap * (len(last) - 1)])
     out = []
     for ps in spec:
         firsts = [box_lines(*p) for p in ps]
@@ -358,8 +359,10 @@ def melody_box(rows):
             "ups and downs right = every move in the right direction · right shape, wrong place = the same moves, started on another degree")
 
 
-CLOUD = 4             # the fragment cloud: lines between two labels of its scale (0, 25 ... 100 %); it is as wide as the terminal
-RUN = 3               # notes in a fragment
+CLOUD = 4             # a fragment cloud: lines between two labels of its scale (0, 25 ... 100 %); it is half as wide as the terminal
+PAIRS = 12            # rows of the two-note table, of the pairs heard MIN_BAR times or more
+JITTER = 0.06         # how far above or below its share a dot may be set
+RUNS = (2, 3)         # notes in a fragment: a cloud for each length
 DOTS = (0x01, 0x02, 0x04, 0x40, 0x08, 0x10, 0x20, 0x80)     # a braille character's dots, left column then right, top down
 
 
@@ -373,14 +376,10 @@ def count_ticks(at, most, across):
     return "".join(line).rstrip()
 
 
-def fragments_box(rows):
-    """Every run of three notes inside a melody as a dot: across, how many times it has been heard (each doubling
-    the same step); up, how often all three were answered right. A run is its degrees and the leaps between them,
-    in semitones, whatever the key and the octave: 5 up a fourth to 1 and 5 down a fifth to 1 are two runs.
-    A run heard n times is set at random between n and n + 1, so the ones heard once or twice fill a band
-    rather than stack in a line."""
-    import math
-    import random
+def runs(rows, RUN):
+    """(times heard, times all answered right) of every run of `RUN` notes inside a melody. A run is its degrees and
+    the leaps between them, in semitones, whatever the key and the octave: 5 up a fourth to 1 and 5 down a fifth
+    to 1 are two runs."""
     heard, right_ = Counter(), Counter()
     for r in rows:
         if r["answer"] is None:
@@ -392,17 +391,50 @@ def fragments_box(rows):
             run = " ".join(truth[i:i + RUN]) + " " + " ".join(f"{q - p:+d}" for p, q in zip(midis[i:], midis[i + 1:i + RUN]))
             heard[run] += 1
             right_[run] += all(ok[i:i + RUN])
+    return heard, right_
+
+
+def pairs_box(rows):
+    """The runs of two notes heard often that are answered right least."""
+    heard, right_ = runs(rows, 2)
+    often = sorted((p for p, n in heard.items() if n >= MIN_BAR), key=lambda p: (right_[p] / heard[p], -heard[p]))
+    if len(often) < 2:
+        return None
+    body = []
+    for p in often[:PAIRS]:
+        a, b, leap = p.split()
+        body.append((f"{a} {'↑' if int(leap) > 0 else '↓' if int(leap) < 0 else '→'} {b}", abs(int(leap)), heard[p],
+                     hbar(right_[p] / heard[p]), 100 * right_[p] / heard[p]))
+    return ("melodies · two notes in a row, missed most",
+            table([("pair", "<", ""), ("semitones", ">", "d"), ("heard", ">", "d"), ("", "<", ""), ("both right %", ">", ".0f")], body), None)
+
+
+def fragments_box(rows, RUN):
+    """Every run of `RUN` notes inside a melody as a dot: across, how many times it has been heard (each doubling
+    the same step); up, how often all of them were answered right. 
+    A run heard n times is set at random between n and n + 1, and up to JITTER above or below its share (never
+    as far as the next share n hearings can give), and set again while it lands on another run's dot, so the
+    ones heard once or twice fill a patch rather than stack on a dot. A line above 100 % and one under 0 % leave the room."""
+    import math
+    import random
+    heard, right_ = runs(rows, RUN)
     if len(heard) < 50:
         return None
-    across, apart = columns() - 12, CLOUD            # the box fills the terminal: its edges, its padding and the scale take 12
-    down = 4 * apart + 1                             # a line for 100 %, then `apart` lines to each label below it
+    across, apart = (columns() - 1) // 2 - 12, CLOUD # two boxes fill the terminal: of each, the edges, the padding and the scale take 12
+    down = 4 * apart + 3                             # a line of room, one for 100 %, `apart` lines to each label below it, a line of room
     span = math.log2(max(heard.values()) + 1)
     at = lambda n: math.log2(n) / span                # where a count sits, 0 at the left edge to 1
     lit = set()
     for run, n in heard.items():
-        x = int(at(n + random.Random(run).random()) * across * 2)
-        lit.add((min(x, across * 2 - 1), round((1 - right_[run] / n) * 4 * apart * 4 + 1.5)))      # a labelled share is the middle of its line
-    labels = {k * apart: 100 - 25 * k for k in range(5)}
+        rng = random.Random(run)
+        for _ in range(100):
+            x = int(at(n + rng.random()) * across * 2)
+            share = right_[run] / n + (2 * rng.random() - 1) * min(JITTER, 0.5 / n)
+            dot = (min(x, across * 2 - 1), round((1 - share) * 4 * apart * 4 + 5.5))      # a labelled share is the middle of its line
+            if dot not in lit:
+                break
+        lit.add(dot)
+    labels = {k * apart + 1: 100 - 25 * k for k in range(5)}
     lines = []
     for r in range(down):
         cells = (sum(DOTS[dx * 4 + dy] for dx in (0, 1) for dy in range(4) if (2 * c + dx, 4 * r + dy) in lit) for c in range(across))
@@ -487,5 +519,6 @@ def report(con, key=None, tag=None):
                   matrix_box(single, f"degrees · every question, {len(single)}"), mixups(single, "degrees"), speed_box(single), keys_box(single), register_box(single), leaps_box(single), hours_box(single)]
     chords = [r for r in rows if r["mode"] == "chords"]
     melodies = [r for r in rows if r["mode"] == "melody"]
-    parts += [melody_box(melodies), chords_box(chords), matrix_box(chords, f"chords · every question, {len(chords)}"), fragments_box(melodies)]
-    print("\n" + soft(grid([p for p in parts if p])) + "\n")
+    parts += [melody_box(melodies), pairs_box(melodies), chords_box(chords), matrix_box(chords, f"chords · every question, {len(chords)}")]
+    clouds = [c for c in (fragments_box(melodies, n) for n in RUNS) if c]
+    print("\n" + soft(grid([p for p in parts if p], clouds)) + "\n")
