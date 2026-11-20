@@ -38,7 +38,8 @@ DOT = {(0, 0): 0x01, (0, 1): 0x02, (0, 2): 0x04, (0, 3): 0x40,     # (column, ro
 
 
 def load(con, mode=None, degrees=None, key=None, tag=None):
-    """One row per question asked in a finished session. `mode` is one mode, a tuple of
+    """One row per question asked in a finished session that is not deprecated (`cordelia deprecate`:
+    a session marked as too unlike the rest to be counted with it; every analysis reads through here). `mode` is one mode, a tuple of
     modes, or None for every mode; `degrees` picks a list within those. Degrees and focus
     are separate drills: rows carry their mode and are grouped by exercise, and a caller
     that wants both pooled names both, as the auto focus does."""
@@ -47,7 +48,7 @@ def load(con, mode=None, degrees=None, key=None, tag=None):
                     i.truth, i.meta, i.ask_ms, a.answer, a.correct, a.latency_ms
              FROM items i JOIN sessions s ON s.id = i.session_id
              LEFT JOIN answers a ON a.session_id = i.session_id AND a.idx = i.idx
-             WHERE s.outcome IN ('completed', 'stopped')
+             WHERE s.outcome IN ('completed', 'stopped') AND s.deprecated IS NULL
              ORDER BY s.started_at_ms, i.idx"""
     rows = []
     for sid, started, smode, config, tags, stopped, truth, meta, ask, answer, correct, latency in con.execute(sql):

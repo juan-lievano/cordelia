@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   config TEXT NOT NULL,                -- JSON: what defines the session, incl. its keymap
   tags TEXT NOT NULL DEFAULT '[]',     -- JSON array
   outcome TEXT NOT NULL,               -- rendering / completed / stopped / aborted
-  stopped_at_ms INTEGER                -- ms into the audio when it ended
+  stopped_at_ms INTEGER,               -- ms into the audio when it ended
+  deprecated TEXT                      -- why no analysis reads it any more; NULL while it is read (since 2026-11-20)
 );
 CREATE TABLE IF NOT EXISTS items (
   session_id INTEGER NOT NULL REFERENCES sessions(id),
@@ -65,7 +66,16 @@ def connect():
     con = sqlite3.connect(data_dir() / "cordelia.db")
     con.execute("PRAGMA journal_mode=DELETE")
     con.executescript(SCHEMA)
+    if "deprecated" not in [c[1] for c in con.execute("PRAGMA table_info(sessions)")]:     # a database from before 2026-11-20
+        con.execute("ALTER TABLE sessions ADD COLUMN deprecated TEXT")
     return con
+
+
+def deprecate(con, ids, reason):
+    """Mark sessions as no longer read by any analysis, with the reason; None brings them back.
+    Nothing is deleted: the session, its questions and its presses stay as they are."""
+    con.executemany("UPDATE sessions SET deprecated=? WHERE id=?", [(reason, i) for i in ids])
+    con.commit()
 
 
 def setting(con, key, default=None):

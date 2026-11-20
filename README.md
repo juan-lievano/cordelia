@@ -246,6 +246,13 @@ per session; `--keep-wav` keeps the audio too.
 | `keystrokes` | key press   | ms since playback was started, key name (`4`, `space`, `other`...) |
 | `answers`    | question    | derived: answer, correct (NULL when nothing was pressed), latency from onset to the press that counted, presses in the window, late presses after it |
 
+A session can be deprecated: `cordelia deprecate 18-128 --mode melody --because "..."`
+writes the reason in `sessions.deprecated`, and `stats`, `stats --full` and the
+focus drill's choice of degrees no longer read it (they all load through
+`stats.load`); `journal` and `history` still do, the time was practised.
+Nothing is deleted, `--undo` brings the sessions back, and `cordelia deprecate`
+alone lists what is left out and why.
+
 The scorer is a pure function of items and presses (`cordelia/scorer.py`),
 and `rescore` reruns it over every session, so the rule can change later
 without losing anything. Timing caveat: `afplay` starts some tens of ms

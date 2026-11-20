@@ -21,6 +21,7 @@ from collections import Counter, defaultdict
 from datetime import date, datetime
 
 from .modes import DRILLS
+from .modes import degrees as degrees_mode
 from .stats import BAR, FIFTHS, PAD, RAMP, confusion_matrix, load, tally
 
 TOP = 8               # rows of a ranking
@@ -379,12 +380,12 @@ def count_ticks(at, most, across):
 def runs(rows, RUN):
     """(times heard, times all answered right) of every run of `RUN` notes inside a melody. A run is its degrees and
     the leaps between them, in semitones, whatever the key and the octave: 5 up a fourth to 1 and 5 down a fifth
-    to 1 are two runs."""
+    to 1 are two runs. The tonic on top, stored as 8 by the sessions before 2026-11-14, is 1 here."""
     heard, right_ = Counter(), Counter()
     for r in rows:
         if r["answer"] is None:
             continue
-        truth, answer = r["truth"].split(), r["answer"].split()
+        truth, answer = r["truth"].replace("8", "1").split(), r["answer"].replace("8", "1").split()
         ok = [i < len(answer) and answer[i] == t for i, t in enumerate(truth)]     # note for note; a note not given is wrong
         midis = r["meta"]["midis"]
         for i in range(len(truth) - RUN + 1):
@@ -392,6 +393,25 @@ def runs(rows, RUN):
             heard[run] += 1
             right_[run] += all(ok[i:i + RUN])
     return heard, right_
+
+
+def scale(r):
+    """`major` or `minor`: the scale a session's list is all or part of (a list in both is major's), or None."""
+    asked = set(r["config"]["degrees"]) - {"8"}
+    return next((name for name in ("major", "minor") if asked <= set(degrees_mode.SHORTHANDS[name])), None)
+
+
+def possible(rows, name, RUN):
+    """How many runs of `RUN` notes the scale's seven degrees can make in the ranges its sessions had: in every
+    one of them (the widest holds the others), no note twice in a row."""
+    made = set()
+    for span in {tuple(r["config"]["range"][1:]) for r in rows if len(r["config"].get("range", ())) == 3}:
+        notes = degrees_mode.in_range(dict(key="C", degrees=degrees_mode.SHORTHANDS[name], range=["C4", *span]))
+        grown = [((d,), (), m) for d, m in notes]
+        for _ in range(RUN - 1):
+            grown = [(ds + (d,), leaps + (m - last,), m) for ds, leaps, last in grown for d, m in notes if m != last]
+        made |= {(ds, leaps) for ds, leaps, _ in grown}
+    return len(made)
 
 
 def pairs_box(rows):
@@ -440,7 +460,15 @@ def fragments_box(rows, RUN):
         cells = (sum(DOTS[dx * 4 + dy] for dx in (0, 1) for dy in range(4) if (2 * c + dx, 4 * r + dy) in lit) for c in range(across))
         lines.append((f"{labels[r]:>4} │" if r in labels else "     │") + "".join(chr(0x2800 + b) if b else " " for b in cells))
     lines += ["     └" + "─" * across, "      " + count_ticks(at, max(heard.values()), across)]
-    return (f"melodies · {len(heard)} runs of {RUN} notes · times heard against % right", "\n".join(lines))
+    title = [f"melodies · {len(heard)} runs of {RUN} notes"]
+    for name in ("minor", "major"):          # of each scale's own sessions: heard / there are, in the ranges they had
+        its = [r for r in rows if scale(r) == name]
+        if its and possible(its, name, RUN):
+            title.append(f"{name} {len(runs(its, RUN)[0])}/{possible(its, name, RUN)}")
+    title.append("times heard against % right")
+    while len(" · ".join(title)) > across + 4 and len(title) > 1:       # the box is no wider for its title: the last parts go
+        title.pop()
+    return (" · ".join(title), "\n".join(lines))
 
 
 def chords_box(rows):

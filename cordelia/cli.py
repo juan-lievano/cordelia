@@ -96,6 +96,11 @@ def main(argv=None):
     r.add_argument("--seed", type=int)
     sub.add_parser("journal", help="the practice wall: a column per week, a cell per day shaded by minutes")
     sub.add_parser("rescore", help="rebuild every session's answers from its key presses")
+    x = sub.add_parser("deprecate", help="leave sessions out of every analysis (stats, focus), with the reason; nothing is deleted. Alone: the ones left out")
+    x.add_argument("ids", nargs="*", metavar="ID", help="session ids, or ranges of them: 18 40-46")
+    x.add_argument("--mode", help="of those ids, only this drill's sessions: " + " | ".join(DRILLS))
+    x.add_argument("--because", metavar="REASON", help="why (needed, unless --undo)")
+    x.add_argument("--undo", action="store_true", help="read them again")
     sub.add_parser("tags", help="show the sticky tags")
     sub.add_parser("data", help="where the database lives")
 
@@ -124,6 +129,8 @@ def main(argv=None):
         return journal.show(store.connect())
     if a.cmd == "rescore":
         return cmd_rescore()
+    if a.cmd == "deprecate":
+        return cmd_deprecate(a)
     if a.cmd == "tags":
         print(", ".join(tags(store.connect())) or "no tags")
     if a.cmd == "data":
@@ -452,6 +459,28 @@ def cmd_rescore():
         store.replace_answers(con, sid, rows)
         n += 1
     print(f"rescored {n} sessions")
+
+
+def cmd_deprecate(a):
+    con = store.connect()
+    if not a.ids:
+        marked = con.execute("SELECT deprecated, mode, count(*), min(id), max(id), min(started_at_ms), max(started_at_ms) FROM sessions "
+                             "WHERE deprecated IS NOT NULL GROUP BY deprecated, mode ORDER BY min(id)").fetchall()
+        day = lambda ms: time.strftime("%Y-%m-%d", time.localtime(ms / 1000))
+        for reason, mode, n, low, high, first, last in marked:
+            print(f"{n} {mode} session{'s' if n != 1 else ''}, ids {low}-{high}, {day(first)} to {day(last)}: {reason}")
+        return print("no session is deprecated") if not marked else None
+    if not a.undo and not a.because:
+        raise SystemExit("--because \"the reason\" is needed: it is kept with the sessions")
+    wanted = set()
+    for word in a.ids:
+        low, _, high = word.partition("-")
+        if not (low.isdigit() and (high or low).isdigit()):
+            raise SystemExit(f"{word!r} is not a session id or a range of them (18, 40-46)")
+        wanted |= set(range(int(low), int(high or low) + 1))
+    ids = [i for i, mode in con.execute("SELECT id, mode FROM sessions ORDER BY id") if i in wanted and a.mode in (None, mode)]
+    store.deprecate(con, ids, None if a.undo else a.because)
+    print(f"{len(ids)} session{'s' if len(ids) != 1 else ''} {'read again' if a.undo else 'deprecated'}")
 
 
 def write_key(path, mode, config, items):

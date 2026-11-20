@@ -101,6 +101,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`history melody`           | that drill (`degrees` `focus` `melody` `chords`) |
 |                | `cordelia journal`                     | a cell a day, a dot per 2 min practised         |
 |                | `cordelia rescore`                     | rebuild answers from the key presses            |
+|                | `cordelia deprecate 18-46 --because "…"` | leave sessions out of the stats, kept; `--mode melody`, `--undo`; alone: the list |
 |                | `cordelia tags`                        | sticky tags                                     |
 |                | `cordelia data`                        | data directory; `CORDELIA_DATA_DIR=…` overrides |
 |   | ────────────────────────────────────── | ─────────────────────────────────────────────── |
