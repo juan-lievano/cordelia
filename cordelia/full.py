@@ -144,7 +144,7 @@ def grid(parts, gap=1):
                 r.append(i); place(i + 1, rows); r.pop()
         if len(rows) <= len(packed):
             rows.append([i]); place(i + 1, rows); rows.pop()
-    if len(parts) <= 14:
+    if len(parts) <= 16:
         place(0, [])
     spec = [[parts[i] for i in sorted(r)] for r in sorted(best[1], key=min)]
     total = max(used(r) for r in best[1])
@@ -358,7 +358,7 @@ def melody_box(rows):
             "ups and downs right = every move in the right direction · right shape, wrong place = the same moves, started on another degree")
 
 
-CLOUD = (64, 4)       # the fragment cloud: characters across, and lines between two labels of its scale (0, 25 ... 100 %)
+CLOUD = 4             # the fragment cloud: lines between two labels of its scale (0, 25 ... 100 %); it is as wide as the terminal
 RUN = 3               # notes in a fragment
 DOTS = (0x01, 0x02, 0x04, 0x40, 0x08, 0x10, 0x20, 0x80)     # a braille character's dots, left column then right, top down
 
@@ -384,7 +384,7 @@ def fragments_box(rows):
             right_[run] += all(ok[i:i + RUN])
     if len(heard) < 50:
         return None
-    across, apart = CLOUD
+    across, apart = columns() - 12, CLOUD            # the box fills the terminal: its edges, its padding and the scale take 12
     down = 4 * apart + 1                             # a line for 100 %, then `apart` lines to each label below it
     span = math.log2(max(heard.values()) + 1)
     at = lambda n: math.log2(n) / span                # where a count sits, 0 at the left edge to 1
@@ -482,5 +482,5 @@ def report(con, key=None, tag=None):
                   matrix_box(single, f"degrees · every question, {len(single)}"), mixups(single, "degrees"), speed_box(single), keys_box(single), register_box(single), leaps_box(single), hours_box(single)]
     chords = [r for r in rows if r["mode"] == "chords"]
     melodies = [r for r in rows if r["mode"] == "melody"]
-    parts += [melody_box(melodies), fragments_box(melodies), chords_box(chords), matrix_box(chords, f"chords · every question, {len(chords)}")]
+    parts += [melody_box(melodies), chords_box(chords), matrix_box(chords, f"chords · every question, {len(chords)}"), fragments_box(melodies)]
     print("\n" + soft(grid([p for p in parts if p])) + "\n")
