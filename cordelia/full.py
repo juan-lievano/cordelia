@@ -365,8 +365,10 @@ DOTS = (0x01, 0x02, 0x04, 0x40, 0x08, 0x10, 0x20, 0x80)     # a braille characte
 
 def fragments_box(rows):
     """Every run of three notes inside a melody as a dot: across, how many times it has been heard (each doubling
-    the same step); up, how often all three were answered right. A run heard n times is set at random between n
-    and n + 1, so the ones heard once or twice fill a band rather than stack in a line."""
+    the same step); up, how often all three were answered right. A run is its degrees and the leaps between them,
+    in semitones, whatever the key and the octave: 5 up a fourth to 1 and 5 down a fifth to 1 are two runs.
+    A run heard n times is set at random between n and n + 1, so the ones heard once or twice fill a band
+    rather than stack in a line."""
     import math
     import random
     heard, right_ = Counter(), Counter()
@@ -375,8 +377,9 @@ def fragments_box(rows):
             continue
         truth, answer = r["truth"].split(), r["answer"].split()
         ok = [i < len(answer) and answer[i] == t for i, t in enumerate(truth)]     # note for note; a note not given is wrong
+        midis = r["meta"]["midis"]
         for i in range(len(truth) - RUN + 1):
-            run = " ".join(truth[i:i + RUN])
+            run = " ".join(truth[i:i + RUN]) + " " + " ".join(f"{q - p:+d}" for p, q in zip(midis[i:], midis[i + 1:i + RUN]))
             heard[run] += 1
             right_[run] += all(ok[i:i + RUN])
     if len(heard) < 50:
