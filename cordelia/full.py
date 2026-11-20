@@ -363,6 +363,18 @@ RUN = 3               # notes in a fragment
 DOTS = (0x01, 0x02, 0x04, 0x40, 0x08, 0x10, 0x20, 0x80)     # a braille character's dots, left column then right, top down
 
 
+def count_ticks(at, most, across):
+    """The line of labels under a doubling scale: 1, 2, 4 ... first, then the counts between them
+    (3, 6, 12 ..., then 5, 7 and their doubles, then every other one) wherever a label still has room."""
+    odd = lambda n: n // (n & -n)                       # a count with its factors of two taken out: 12 -> 3
+    line = [" "] * (across + 4)
+    for n in sorted(range(1, most + 1), key=lambda n: (odd(n), n)):
+        i, label = int(at(n) * across), str(n)
+        if not "".join(line[max(i - 2, 0): i + len(label) + 2]).strip():
+            line[i: i + len(label)] = label
+    return "".join(line).rstrip()
+
+
 def fragments_box(rows):
     """Every run of three notes inside a melody as a dot: across, how many times it has been heard (each doubling
     the same step); up, how often all three were answered right. A run is its degrees and the leaps between them,
@@ -397,12 +409,7 @@ def fragments_box(rows):
     for r in range(down):
         cells = (sum(DOTS[dx * 4 + dy] for dx in (0, 1) for dy in range(4) if (2 * c + dx, 4 * r + dy) in lit) for c in range(across))
         lines.append((f"{labels[r]:>4} │" if r in labels else "     │") + "".join(chr(0x2800 + b) if b else " " for b in cells))
-    ticks = [" "] * (across + 4)
-    n = 1
-    while n <= max(heard.values()):
-        ticks[int(at(n) * across): int(at(n) * across) + len(str(n))] = str(n)
-        n *= 2
-    lines += ["     └" + "─" * across, "      " + "".join(ticks).rstrip()]
+    lines += ["     └" + "─" * across, "      " + count_ticks(at, max(heard.values()), across)]
     return (f"melodies · {len(heard)} runs of {RUN} notes · times heard against % right", "\n".join(lines))
 
 
