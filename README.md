@@ -279,7 +279,13 @@ drill of their own (`focus minor` beside `degrees minor`; `--mode focus`),
 since a mix that chases what goes wrong reads differently; an auto focus
 still reads the list's questions from both. The trend is in percentage points per hour
 practised: the earlier sessions' minutes, then how far into its own session
-the question came.
+the question came. In `stats --full` a run of two or three notes is that many
+notes in a row of a melody, as their degrees and the leaps between them in
+semitones, whatever the key and the octave, with no leap over an octave
+(`full.LEAP`): 5 up to 1 and 5 down to 1 are two runs, and notes with a
+wider leap between them are no run. A cloud's title counts, for the minor
+and the major sessions, the runs heard out of those the scale can make in
+the ranges played (1372 of three notes in the three octaves of `wide`).
 `--mode`, `--degrees`, `--key` and `--tag` pick a different last session,
 so that harder settings don't read as regression. An exercise is its mode
 and its content (the degree list, the melody recipe, the chords level), and

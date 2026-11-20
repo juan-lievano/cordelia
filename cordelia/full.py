@@ -363,6 +363,8 @@ def melody_box(rows):
 CLOUD = 4             # a fragment cloud: lines between two labels of its scale (0, 25 ... 100 %); it is half as wide as the terminal
 PAIRS = 12            # rows of the two-note table, of the pairs heard MIN_BAR times or more
 JITTER = 0.06         # how far above or below its share a dot may be set
+LEAP = 12             # a run is notes in a row with no leap over this many semitones, an octave: a wider one is not a run,
+                      # heard or to be heard (since 2026-11-20; any leap before, 6762 runs of three in three octaves, most never to come up)
 RUNS = (2, 3)         # notes in a fragment: a cloud for each length
 DOTS = (0x01, 0x02, 0x04, 0x40, 0x08, 0x10, 0x20, 0x80)     # a braille character's dots, left column then right, top down
 
@@ -380,7 +382,7 @@ def count_ticks(at, most, across):
 def runs(rows, RUN):
     """(times heard, times all answered right) of every run of `RUN` notes inside a melody. A run is its degrees and
     the leaps between them, in semitones, whatever the key and the octave: 5 up a fourth to 1 and 5 down a fifth
-    to 1 are two runs. The tonic on top, stored as 8 by the sessions before 2026-11-14, is 1 here."""
+    to 1 are two runs. No leap in a run is over LEAP: notes in a row with a wider one are no run. The tonic on top, stored as 8 by the sessions before 2026-11-14, is 1 here."""
     heard, right_ = Counter(), Counter()
     for r in rows:
         if r["answer"] is None:
@@ -389,6 +391,8 @@ def runs(rows, RUN):
         ok = [i < len(answer) and answer[i] == t for i, t in enumerate(truth)]     # note for note; a note not given is wrong
         midis = r["meta"]["midis"]
         for i in range(len(truth) - RUN + 1):
+            if any(abs(q - p) > LEAP for p, q in zip(midis[i:], midis[i + 1:i + RUN])):
+                continue
             run = " ".join(truth[i:i + RUN]) + " " + " ".join(f"{q - p:+d}" for p, q in zip(midis[i:], midis[i + 1:i + RUN]))
             heard[run] += 1
             right_[run] += all(ok[i:i + RUN])
@@ -403,13 +407,13 @@ def scale(r):
 
 def possible(rows, name, RUN):
     """How many runs of `RUN` notes the scale's seven degrees can make in the ranges its sessions had: in every
-    one of them (the widest holds the others), no note twice in a row."""
+    one of them (the widest holds the others), no note twice in a row and no leap over LEAP."""
     made = set()
     for span in {tuple(r["config"]["range"][1:]) for r in rows if len(r["config"].get("range", ())) == 3}:
         notes = degrees_mode.in_range(dict(key="C", degrees=degrees_mode.SHORTHANDS[name], range=["C4", *span]))
         grown = [((d,), (), m) for d, m in notes]
         for _ in range(RUN - 1):
-            grown = [(ds + (d,), leaps + (m - last,), m) for ds, leaps, last in grown for d, m in notes if m != last]
+            grown = [(ds + (d,), leaps + (m - last,), m) for ds, leaps, last in grown for d, m in notes if 0 < abs(m - last) <= LEAP]
         made |= {(ds, leaps) for ds, leaps, _ in grown}
     return len(made)
 
@@ -468,7 +472,9 @@ def fragments_box(rows, RUN):
     title.append("times heard against % right")
     while len(" · ".join(title)) > across + 4 and len(title) > 1:       # the box is no wider for its title: the last parts go
         title.pop()
-    return (" · ".join(title), "\n".join(lines))
+    return (" · ".join(title), "\n".join(lines),
+            f"a run: {RUN} notes in a row of a melody, as their degrees and the leaps between them, none over an octave · minor, major: "
+            "the runs heard in that scale's sessions / those it can make in the ranges played")
 
 
 def chords_box(rows):
