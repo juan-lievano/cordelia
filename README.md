@@ -39,6 +39,7 @@ python3 -m cordelia review b3 4 --minutes 2 --bpm 50
 python3 -m cordelia stats                          # the last exercise played: histogram, trend, confusions
 python3 -m cordelia stats --degrees minor --tag headphones
 python3 -m cordelia stats --mode melody            # the last melody session's recipe
+python3 -m cordelia stats --bars 20                # 20 bars in the histogram instead of 60, in the same width: fewer are fatter
 python3 -m cordelia stats --full                   # the whole record: every drill in one table, the degrees by mix-up,
                                                    # speed, key, register, the note before and hour, melodies (note by note, the pairs of notes missed most, and every
                                                    # run of two and of three notes as a dot: times heard against right%), chords, records
@@ -265,7 +266,8 @@ for comparing degrees, not for absolute numbers.
 right% over its questions in the order they were asked, the trend with its
 standard error, and for degrees and chords the confusion matrix and the
 recall and precision of each answer over the latest 500 questions. The
-histogram has as many bars as the terminal is wide, 60 at most. The matrix
+histogram has as many bars as the terminal is wide, 60 at most; `--bars N`
+draws N at most in the same width, fewer fatter and more thinner. The matrix
 has a column for each label asked and one for no answer, where an answer
 outside the labels asked (a slip of the hand) is counted too; each cell is
 a block of braille dots scattered as densely as the share of that answer

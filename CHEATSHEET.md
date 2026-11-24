@@ -96,6 +96,7 @@ Repo `~/Documents/Developing/cordelia`, data in `data/`. (last; x) = last sessio
 |                | &nbsp;&nbsp;`--degrees minor`          | degrees drill only, exactly that list; bare `--degrees`: its last list; focus: add `--mode focus` |
 |                | &nbsp;&nbsp;`--key G`                  | only that key                                   |
 |                | &nbsp;&nbsp;`--tag x`                  | only that tag                                   |
+|                | &nbsp;&nbsp;`--bars 20`                | at most 20 bars, same width: fewer are fatter   |
 |                | &nbsp;confusions | rows asked, latest 500 q; degrees and chords    |
 |                | `cordelia history`                     | settings played (named as the flags), sessions + minutes played each, newest first |
 |                | &nbsp;&nbsp;`history melody`           | that drill (`degrees` `focus` `melody` `chords`) |
