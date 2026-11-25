@@ -7,13 +7,56 @@ registered. It never judges.
 """
 
 import select
+import shutil
 import subprocess
 import sys
 import termios
 import time
 import tty
+from pathlib import Path
+
+from . import store
 
 ESC = "\x1b"
+SOURCE = Path(__file__).with_name("player.swift")
+
+
+def player():
+    """The path of cordelia's own player, compiled from player.swift the first time and after
+    each change to it (a few seconds, into the data directory); None without swiftc."""
+    binary = store.data_dir() / "player"
+    if binary.exists() and binary.stat().st_mtime >= SOURCE.stat().st_mtime:
+        return binary
+    if not shutil.which("swiftc"):
+        return None
+    sys.stdout.write("\r\x1b[Kbuilding the player (once)...")
+    sys.stdout.flush()
+    built = subprocess.run(["swiftc", "-O", str(SOURCE), "-o", str(binary)], capture_output=True, text=True)
+    sys.stdout.write("\r\x1b[K")
+    if built.returncode:
+        sys.stderr.write(f"player.swift did not compile, playing with afplay:\n{built.stderr}")
+        return None
+    return binary
+
+
+def start(wav_path):
+    """Starts playback: (process, the time.monotonic_ns() at which its first sample is heard).
+
+    cordelia's player says that moment itself, the output's delay included (a fifth of a second
+    on Bluetooth headphones). afplay, the fallback, says nothing: its moment is the spawn, tens
+    of ms early on the speakers and most of a second early on Bluetooth."""
+    binary = player()
+    if binary:
+        process = subprocess.Popen([str(binary), wav_path], stdout=subprocess.PIPE, text=True)
+        line = process.stdout.readline().split()
+        if len(line) == 2 and line[0] == "heard":
+            return process, time.monotonic_ns() + int(line[1])
+        process.wait()
+    try:
+        process = subprocess.Popen(["afplay", wav_path])
+    except FileNotFoundError:
+        raise SystemExit("afplay not found: playback needs macOS")
+    return process, time.monotonic_ns()
 
 
 def collect(wav_path, ask_ms, status=None, show=None, reveal_ms=None):
@@ -22,9 +65,9 @@ def collect(wav_path, ask_ms, status=None, show=None, reveal_ms=None):
     `status(current, n, typed, revealed)` is the text for the question on now and the keys typed
     for it, `revealed` once its `reveal_ms` moment has passed (the answer has been said),
     `show(text)` puts it on the screen (default: a line of its own, after "question ").
-    keystrokes: [(t_ms, key)] with t_ms counted from the moment playback was
-    started. outcome is 'completed' when the audio ran to its end, 'stopped'
-    on Esc, 'interrupted' on Ctrl+C (the caller saves it as stopped, then
+    keystrokes: [(t_ms, key)] with t_ms counted from the moment the audio's
+    first sample is heard (`start`). outcome is 'completed' when the audio ran to its end, 'stopped'
+    on Esc or when the output went away (headphones taken off), 'interrupted' on Ctrl+C (the caller saves it as stopped, then
     dies of the interrupt so the shell ends a `;` chain or loop).
     """
     if not sys.stdin.isatty():
@@ -33,11 +76,7 @@ def collect(wav_path, ask_ms, status=None, show=None, reveal_ms=None):
     old = termios.tcgetattr(fd)
     keystrokes = []
     outcome = "completed"
-    try:
-        player = subprocess.Popen(["afplay", wav_path])
-    except FileNotFoundError:
-        raise SystemExit("afplay not found: playback needs macOS")
-    t0 = time.monotonic_ns()
+    player, t0 = start(wav_path)
 
     def now_ms():
         return (time.monotonic_ns() - t0) // 1_000_000
@@ -50,6 +89,8 @@ def collect(wav_path, ask_ms, status=None, show=None, reveal_ms=None):
         sys.stdout.write("\x1b[?25l")   # hide the cursor
         while True:
             if player.poll() is not None:
+                if player.returncode:
+                    outcome = "stopped"
                 break
             t = now_ms()
             current = sum(1 for a in ask_ms if a <= t)

@@ -6,7 +6,8 @@ the renderer turns the score into one WAV, the collector plays it and logs
 every key you press with its time, the scorer matches presses to questions
 afterwards, and `stats` reads the record. Nothing reacts while the audio
 plays, and nothing on screen says whether you were right. Standard library
-only; the spoken answers come from macOS `say`.
+only; the spoken answers come from macOS `say`, and the audio is played by
+`cordelia/player.swift`, compiled with `swiftc` the first time (`afplay` without it).
 
 `CHEATSHEET.md` lists every command, flag and key in a line each, and is the
 page to keep current: a change to a command updates it in the same commit.
@@ -256,9 +257,14 @@ alone lists what is left out and why.
 
 The scorer is a pure function of items and presses (`cordelia/scorer.py`),
 and `rescore` reruns it over every session, so the rule can change later
-without losing anything. Timing caveat: `afplay` starts some tens of ms
-after it is spawned, so every latency carries the same small offset; fine
-for comparing degrees, not for absolute numbers.
+without losing anything. Timing: every time is counted from the moment the first sample is
+heard. The player starts the audio a second after the output is running and
+says when that is, the output's own delay added (0.16 s on AirPods, as the
+device reports it), so the screen and the presses line up with the sound on
+Bluetooth headphones too (since 2026-11-25). Before, and still when the
+player cannot be compiled, the clock started when `afplay` was spawned: tens
+of ms early on the speakers, over half a second on AirPods, where the answer
+went up as the note sounded.
 
 ### Stats
 

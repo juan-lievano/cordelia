@@ -14,3 +14,6 @@ cordelia = "cordelia.cli:main"
 
 [tool.setuptools]
 packages = ["cordelia", "cordelia.modes", "cordelia.synth"]
+
+[tool.setuptools.package-data]
+cordelia = ["player.swift"]
